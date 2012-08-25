@@ -7,7 +7,6 @@ case class ChatEffect(
   val enabled: Signal[Boolean],
   val select: Player => Boolean
 ) extends (Message => Message) {
-
   def apply(msg: Message): Message = 
     if (enabled.now) 
       effect(msg) 

@@ -33,11 +33,17 @@ object Gameserver extends App {
   // Build the socket sources.
   val socketSources = players
       .map(_.sourcePort)
-      .map(SocketSource[Message]("127.0.1.1", _))
+      .map(SocketSource[Any]("127.0.1.1", _))
+  val messageSources = socketSources
+      .map(_.filter {
+          case message: Message => true
+          case _ => false
+        }
+      )
       // TODO: Fix this badness. No typecast should be necessary here
       .map(_.asInstanceOf[EventStream[Message]])
-  val allSources = socketSources.reduce(_ | _)
-  val sources = Map((players zip socketSources): _*)
+  val allSources = messageSources.reduce(_ | _)
+  val sources = Map((players zip messageSources): _*)
 
   // Get source ports.
   val sinkPorts = players.map(_.sinkPort)
