@@ -26,10 +26,11 @@ case class Message(
 
   // Redact parts of the message randomly
   def redact: Message = {
+    val random = new Random((sender + body).hashCode)
     val redacted =
       body.split("""\s+""") // Split on whitespace
         .map(word => 
-          Random.nextInt(redactEvery) match {
+          random.nextInt(redactEvery) match {
             // If random int equals 0, redact it.
             case 0 => redactChar * word.length
             case _ => word
