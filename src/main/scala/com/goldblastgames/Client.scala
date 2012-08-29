@@ -33,16 +33,12 @@ object Client extends App with Observing {
   val channelMatcher = """/channel (.+)""".r
   var dest = "All"
 
-  val abilityMatcher = """/ability (.+) (.+\s*)+""".r
-
   // Take lines from standard input
   new IteratorStream(Source.stdin.getLines.takeWhile(_ != "/quit"))
     .foreach(
       line => line match {
         case channelMatcher(channel) =>
           dest = channel
-        case abilityMatcher(ability, args) => 
-          events.fire(new AbilityCommand(ability, args.split("""\s+""")))
         case _ => events.fire(new Message(name, dest, line.toString))
       }
     )
