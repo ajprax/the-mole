@@ -22,7 +22,8 @@ object Gameserver extends App {
 
   // Build the socket sources.
   val socketSources = players
-      .map(SocketSource[Any]("127.0.1.1", _.sourcePort))
+      .map(_.sourcePort)
+      .map(SocketSource[Any]("127.0.1.1", _))
 
   // Chat system
   val chatModule = ServerModule.chat(effects)
