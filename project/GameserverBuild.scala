@@ -23,6 +23,7 @@ object GameserverBuild extends Build {
         "org.specs2" %% "specs2" % "1.12.1" % "test"
       ),
       resolvers ++= Seq(
+        // Sonatype is for cc.co.scala-reative:reactive-core
         "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
         "Sonatype releases"  at "http://oss.sonatype.org/content/repositories/releases"
       )
