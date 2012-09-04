@@ -20,6 +20,7 @@ object ChatEffect {
   // The effect: Message=>Message parameters are the functions that are implemented in the second half of this object.
   def redact(enabled: Signal[Boolean], select: Player => Boolean) = ChatEffect(redactMessage, enabled, select)
   def anonymize(enabled: Signal[Boolean], select: Player => Boolean) = ChatEffect(anonymizeMessage, enabled, select)
+  def shuffle(enabled: Signal[Boolean], select: Player => Boolean) = ChatEffect(shuffleMessage, enabled, select)
 
  //----------------------------------------------------------- 
  // The following implement the methods that transform messages.
@@ -52,6 +53,17 @@ object ChatEffect {
       // TODO(Issue 12) You lose tabs/other whitespace when this happens.
 
     return new Message(msg.sender, msg.channel, redacted)
+  }
+
+  // Shuffle the words of a message randomly
+  def shuffleMessage(msg: Message) = {
+    val splitMsg = msg
+        .body
+        .split("""\s+""")
+        .toSeq
+    val shuffled = Random.shuffle(splitMsg)
+        .reduce(_ + " " + _)
+    Message(msg.sender, msg.channel, shuffled)
   }
 }
 

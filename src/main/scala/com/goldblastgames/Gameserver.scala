@@ -17,7 +17,8 @@ object Gameserver extends App {
     Player(2555, 2565, 4L, "Player4", USSR, America)
   )
   val effects = Seq[ChatEffect](
-    ChatEffect.redact(Val(true), _ => true)
+    ChatEffect.redact(Val(true), _ => true),
+    ChatEffect.shuffle(Val(true), _ => true)
   )
 
   // Build the socket sources.
