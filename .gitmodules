@@ -1,0 +1,3 @@
+[submodule "lib/echo"]
+	path = lib/echo
+	url = git@github.com:robotoer/echo.git
