@@ -21,6 +21,9 @@ object Gameserver extends EchoApp {
       ChatEffect.shuffle(Behaviour(_ => true), _ => true)
     )
 
+    // TODO: Specify period for missions happening in configuration. 
+    val missionSource = new MissionSource(10000)
+
     // Build the socket sources.
     val socketSources = players
         .map(_.sourcePort)
@@ -28,15 +31,21 @@ object Gameserver extends EchoApp {
 
     socketSources.map(_.foreach(println(_)))
 
+    val messageSources = socketSources
+      .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
+    val playerSources = Map((players zip messageSources): _*)
+
     // Chat system
     val chatModule = ServerModule.chat(effects)
-    val messageSources = socketSources
-        .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
-    val chatStreams = chatModule(Map((players zip messageSources): _*))
+    val chatSources = chatModule(playerSources)
 
+    // Add missions into outgoing events
+    // Missions are not affected by chat effects
+    val missionSources = MissionSource.addMissions(chatSources, missionSource)
+    
     // Merge different streams.
-    val sinkStreams = chatStreams
-
+    val sinkStreams = missionSources
+    
     val sinks = sinkStreams.map {
       case (player, stream) => Sender("localhost", player.sinkPort, stream.map((_, msg) => msg.toString))
     }
