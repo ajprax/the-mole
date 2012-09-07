@@ -3,7 +3,7 @@ package com.goldblastgames
 import com.goldblastgames.Nation._
 
 object Skills extends Enumeration {
-  type skill = Value
+  type Skill = Value
   val Subterfuge,
     InformationGathering,
     Wetwork,
@@ -12,32 +12,32 @@ object Skills extends Enumeration {
     Stoicism = Value
 }
 
-case class SkillRequirement(skill: Skills.skill, min: Int) {
-  override def toString(): String = {
+case class SkillRequirement(skill: Skills.Skill, min: Int) {
+  def humanString(): String = {
     "%s: %s".format(skill, min)
   }
 }
 
 object Rewards extends Enumeration {
-  type reward = Value
+  type Reward = Value
   val MRD, points = Value
 }
 
 case class MissionObjective(
   primary: SkillRequirement, 
   secondary: SkillRequirement, 
-  reward: Rewards.reward
+  reward: Rewards.Reward
 ) {
-  override def toString(): String = {
+  def humanString(): String = {
     "Skill 1: %s\n Skill2: %s\n Reward:".format(
-      primary.toString,
-      secondary.toString,
+      primary.humanString,
+      secondary.humanString,
       reward.toString
     )
   }
 }
 
-// TODO Resolve missions based on submitted skills.
+// TODO(issue-33): Resolve missions based on submitted skills.
 case class Mission(
   id: Int,
   team: Nation,
@@ -52,8 +52,8 @@ case class Mission(
     "Mission description: %s").format(
       id,
       team.toString, 
-      primaryObjective.toString, 
-      secondaryObjective.toString, 
+      primaryObjective.humanString, 
+      secondaryObjective.humanString, 
       description
     )
   }

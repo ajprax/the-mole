@@ -10,7 +10,8 @@ import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
 
-class MissionSource(val period: Int = 86400000) // default one day
+// TODO(issue-34): Move timer functionality to echo
+class MissionSource(val period: Long = 86400000) // default one day
   extends EventSource[Message] 
 {
 
