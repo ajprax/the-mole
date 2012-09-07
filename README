@@ -1,5 +1,10 @@
-A sample for the Typesafe Stack (http://typesafe.com/stack).
+Unnamed game project by GoldBlastGames
 
-Scala sample project using Scala and SBT.
+This project makes use of the echo library: https://github.com/oetzi/echo
 
-To run and test it use SBT invoke: 'sbt run'
+To build & run the game's components:
+
+$ cd lib/echo
+$ sbt publish-local
+$ cd ../..
+$ sbt run
