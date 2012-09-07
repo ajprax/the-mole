@@ -1,22 +1,52 @@
 package com.goldblastgames.server
 
+import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
+import com.github.oetzi.echo.core.EventSource
+import com.github.oetzi.echo.core.Stepper
 
 // TODO: Make a channel object explicitly that is an Event that returns events.
 //       May necessitate modifying echo with the CanBuild pattern
-import com.goldblastgames.Player
 import com.goldblastgames.chat.ChatEffect
 import com.goldblastgames.io.Message
+import com.goldblastgames.io.SubmitCommand
+import com.goldblastgames.mission._
 import com.goldblastgames.Nation._
+import com.goldblastgames.Player
 
-case class ServerModule[T] (
-  frp: Map[Player, Event[T]] => Map[Player, Event[T]]
-) extends (Map[Player, Event[T]] => Map[Player, Event[T]]) {
+case class ServerModule[T, U] (
+  frp: Map[Player, Event[T]] => Map[Player, Event[U]]
+) extends (Map[Player, Event[T]] => Map[Player, Event[U]]) {
   def apply(sources: Map[Player, Event[T]]) = frp(sources)
 }
 
 object ServerModule {
-  def chat(effects: Seq[ChatEffect]): ServerModule[Message] = {
+  def mission(): ServerModule[SubmitCommand, Message] = {
+    
+    val missionChange = new TimedMissionChange(10000) 
+    val currentMission = Stepper[Mission](Mission.dummyMission, missionChange)
+
+    // Build new mission notifications
+    ServerModule(
+      sources => {
+        // TODO(issue-33): Resolve missions based on submitted skills.
+
+        // When the mission changes, notify everyone!
+        // TODO Mission Debriefing for previous mission, 
+        // which will be different per team
+        // as they have different level of detail.
+         val newMissionSinks = sources.keys.map {
+          case p @ Player(name, camp, allegiance) => {
+            p -> missionChange.map((_, mission) => new Message("Mission Center", name, mission.description))
+          }
+        }
+
+      // TODO merge prevMissionDebriefing with newMissionNotification
+      Map(newMissionSinks.toSeq: _*)
+    })
+  }  
+
+  def chat(effects: Seq[ChatEffect]): ServerModule[Message, Message] = {
 
     def channel(name: String, input: Event[Message]) = input.filter(_.channel == name)
 
@@ -50,5 +80,7 @@ object ServerModule {
       }
       sinks.toMap
     })
+
   }
 }
+

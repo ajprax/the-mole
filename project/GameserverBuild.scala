@@ -17,6 +17,7 @@ object GameserverBuild extends Build {
         "commons-io" % "commons-io" % "2.4",
         "org.slf4j" % "slf4j-api" % "1.6.6",
         "org.slf4j" % "slf4j-simple" % "1.6.6",
+        "org.scalaz" %% "scalaz-core" % "6.0.4",
 
         // Test dependencies.
         "org.specs2" %% "specs2" % "1.12.1" % "test"

@@ -1,11 +1,19 @@
-package com.goldblastgames.server
+package com.goldblastgames
+
+import scalaz._
+import Scalaz._
 
 import com.github.oetzi.echo.EchoApp
 import com.github.oetzi.echo.core.Behaviour
+import com.github.oetzi.echo.core.Event
+import com.github.oetzi.echo.io.Receiver
+import com.github.oetzi.echo.io.Sender
 
-import com.goldblastgames.Player
 import com.goldblastgames.chat.ChatEffect
 import com.goldblastgames.io.Message
+import com.goldblastgames.io.SubmitCommand
+import com.goldblastgames.server.ServerModule
+import com.goldblastgames.server.Session
 import com.goldblastgames.Nation._
 
 object GameServer extends EchoApp {
@@ -33,15 +41,28 @@ object GameServer extends EchoApp {
     // Build the socket sources.
     val receivers = session.connections.values
 
+    val messageSources = receivers
+      .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
+    val playerMessageSources = Map((players zip messageSources): _*)
+
+    val commandSources = receivers
+          .map(_.filter(_ matches SubmitCommand.submitRegex)
+            .map((_, msg) => SubmitCommand.deserialize(msg)))
+    val playerCommandSources = Map((players zip commandSources): _*)
+
     // Chat system
     val chatModule = ServerModule.chat(effects)
-    val messageSources = receivers
-        .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
-    val chatStreams = chatModule(players.zip(messageSources).toMap)
+    val chatSources = chatModule(playerMessageSources)
 
+    // Mission system
+    val missionModule = ServerModule.mission()
+    val missionSources = missionModule(playerCommandSources)
+    
     // Merge different streams.
-    val senderStreams = chatStreams
-
+    // This is done weirdly, see: http://stackoverflow.com/questions/7755214/
+   val senderStreams: Map[Player, Event[Message]] = 
+     (missionSources.mapValues(Seq(_)) |+| chatSources.mapValues(Seq(_)) ).map{case (k, v) => k -> v.reduce(_ merge _)}
+    
     val senders = senderStreams.foreach {
       case (player, stream) => session.connections(player).write(stream.map((_, msg) => msg.toString))
     }
