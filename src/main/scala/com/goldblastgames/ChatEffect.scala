@@ -1,15 +1,15 @@
 package com.goldblastgames
 
-import _root_.reactive.Signal
+import com.github.oetzi.echo.core.Behaviour
 import scala.util.Random
 
 case class ChatEffect(
   val effect: Message => Message,
-  val enabled: Signal[Boolean],
+  val enabled: Behaviour[Boolean],
   val select: Player => Boolean
 ) extends (Message => Message) {
   def apply(msg: Message): Message = 
-    if (enabled.now) 
+    if (enabled.eval) 
       effect(msg) 
     else 
       msg
@@ -18,9 +18,9 @@ case class ChatEffect(
 object ChatEffect {
   // These are specific chat effects that are instances of the case class ChatEffect above.  
   // The effect: Message=>Message parameters are the functions that are implemented in the second half of this object.
-  def redact(enabled: Signal[Boolean], select: Player => Boolean) = ChatEffect(redactMessage, enabled, select)
-  def anonymize(enabled: Signal[Boolean], select: Player => Boolean) = ChatEffect(anonymizeMessage, enabled, select)
-  def shuffle(enabled: Signal[Boolean], select: Player => Boolean) = ChatEffect(shuffleMessage, enabled, select)
+  def redact(enabled: Behaviour[Boolean], select: Player => Boolean) = ChatEffect(redactMessage, enabled, select)
+  def anonymize(enabled: Behaviour[Boolean], select: Player => Boolean) = ChatEffect(anonymizeMessage, enabled, select)
+  def shuffle(enabled: Behaviour[Boolean], select: Player => Boolean) = ChatEffect(shuffleMessage, enabled, select)
 
  //----------------------------------------------------------- 
  // The following implement the methods that transform messages.
