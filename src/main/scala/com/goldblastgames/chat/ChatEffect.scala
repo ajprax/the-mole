@@ -1,7 +1,11 @@
-package com.goldblastgames
+package com.goldblastgames.chat
+
+import scala.util.Random
 
 import com.github.oetzi.echo.core.Behaviour
-import scala.util.Random
+
+import com.goldblastgames.Player
+import com.goldblastgames.io.Message
 
 case class ChatEffect(
   val effect: Message => Message,
@@ -66,5 +70,3 @@ object ChatEffect {
     Message(msg.sender, msg.channel, shuffled)
   }
 }
-
-

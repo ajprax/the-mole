@@ -3,10 +3,8 @@ package com.goldblastgames
 import com.goldblastgames.Nation._
 
 case class Player(
-  sourcePort: Int,
-  sinkPort: Int,
-  identifier: Long,
+  //abilities: Seq[Ability],
   name: String,
   camp: Nation,
-  allChannelegiance: Nation
+  allegiance: Nation
 )

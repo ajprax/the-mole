@@ -1,7 +1,12 @@
-package com.goldblastgames
+package com.goldblastgames.server
 
 import com.github.oetzi.echo.core.Event
 
+// TODO: Make a channel object explicitly that is an Event that returns events.
+//       May necessitate modifying echo with the CanBuild pattern
+import com.goldblastgames.Player
+import com.goldblastgames.chat.ChatEffect
+import com.goldblastgames.io.Message
 import com.goldblastgames.Nation._
 
 case class ServerModule[T] (
@@ -23,7 +28,9 @@ object ServerModule {
 
       // Create channels.
       val allChannel     = channel("All", allSources)
-      val playerChannels = Map(sources.keys.map(player => (player -> channel(player.name, allSources))).toSeq: _*)
+      val playerChannels = sources.keys
+          .map(player => player -> channel(player.name, allSources))
+          .toMap
       val campChannels   = Map(
         USSR -> channel("USSR", ussrSources),
         America -> channel("America", americaSources)
@@ -31,15 +38,17 @@ object ServerModule {
 
       // Build sets of player's sink components.
       val sinks = sources.keys.map {
-        case p @ Player(_, sinkPort, _, name, nation, _) => {
+        case p @ Player(name, nation, _) => {
           val appliedEffects = effects.filter(_.select(p))
-          val channelSinks = allChannel.merge(campChannels(nation)).merge(playerChannels(p))
+          val channelSinks = allChannel merge campChannels(nation) merge playerChannels(p)
+
+          channelSinks.foreach(msg => println("[%s %s]".format(name, msg)))
 
           // TODO: Use these timestamps.
           p -> channelSinks.map((_, msg) => appliedEffects.foldLeft(msg)((x, f) => f(x)))
         }
       }
-      Map(sinks.toSeq: _*)
+      sinks.toMap
     })
   }
 }
