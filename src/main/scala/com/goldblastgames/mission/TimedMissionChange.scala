@@ -5,12 +5,13 @@ import java.util.TimerTask
 
 import com.github.oetzi.echo.core.EventSource
 
-// TODO(Issue-36): actually generate missions
+
 class TimedMissionChange(period: Long) extends EventSource[Mission] {
   val timer = new Timer() 
     class MissionTimerTask() extends TimerTask {
       override def run(): Unit = {
-        val mission = Mission.dummyMission
+        // TODO(Issue-36): Generate new mission here instead of dummy mission
+        val mission = Mission.nextMission
         occur(mission)
       }
     }

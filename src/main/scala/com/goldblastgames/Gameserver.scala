@@ -14,6 +14,7 @@ import com.goldblastgames.io.Message
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.server.ServerModule
 import com.goldblastgames.server.Session
+import com.goldblastgames.mission.TimedMissionChange
 import com.goldblastgames.Nation._
 
 object GameServer extends EchoApp {
@@ -46,7 +47,7 @@ object GameServer extends EchoApp {
           .mapValues(_.map((_, msg) => msg.toString))
 
       // Mission system
-      val missionModule = ServerModule.mission()
+      val missionModule = ServerModule.mission(new TimedMissionChange(10000))
       val missionInput = connections.values
           .map(_.filter(_ matches SubmitCommand.submitRegex).map((_, msg) => SubmitCommand.deserialize(msg)))
       val missionOutput = missionModule(players.zip(missionInput).toMap)
