@@ -1,44 +1,51 @@
-package com.goldblastgames
+package com.goldblastgames.server
 
 import com.github.oetzi.echo.EchoApp
 import com.github.oetzi.echo.core.Behaviour
-import com.github.oetzi.echo.io.Receiver
-import com.github.oetzi.echo.io.Sender
 
+import com.goldblastgames.Player
+import com.goldblastgames.chat.ChatEffect
+import com.goldblastgames.io.Message
 import com.goldblastgames.Nation._
 
-object Gameserver extends EchoApp {
+object GameServer extends EchoApp {
+
   def setup(args: Array[String]) {
     // TODO(Issue-16): This should be in configuration somewhere.
+    val port = 2552
     val players = Seq(
-      Player(2552, 2562, 1L, "Player1", America, America),
-      Player(2553, 2563, 2L, "Player2", USSR, USSR),
-      Player(2554, 2564, 3L, "Player3", America, USSR),
-      Player(2555, 2565, 4L, "Player4", USSR, America)
+      Player("daisy", America, America),
+      Player("robert", America, America),
+      Player("franklin", America, USSR),
+      Player("kane", USSR, USSR),
+      Player("aaron", USSR, USSR),
+      Player("clayton", USSR, America)
     )
     val effects = Seq[ChatEffect](
       ChatEffect.redact(Behaviour(_ => true), _ => true),
       ChatEffect.shuffle(Behaviour(_ => true), _ => true)
     )
 
-    // Build the socket sources.
-    val socketSources = players
-        .map(_.sourcePort)
-        .map(Receiver(_) { msg: String => Behaviour( _ => msg ) })
+    print("Starting server on port %d...".format(port))
 
-    socketSources.map(_.foreach(println(_)))
+    val session = new Session(port, players)
+
+    // Build the socket sources.
+    val receivers = session.connections.values
 
     // Chat system
     val chatModule = ServerModule.chat(effects)
-    val messageSources = socketSources
+    val messageSources = receivers
         .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
-    val chatStreams = chatModule(Map((players zip messageSources): _*))
+    val chatStreams = chatModule(players.zip(messageSources).toMap)
 
     // Merge different streams.
-    val sinkStreams = chatStreams
+    val senderStreams = chatStreams
 
-    val sinks = sinkStreams.map {
-      case (player, stream) => Sender("localhost", player.sinkPort, stream.map((_, msg) => msg.toString))
+    val senders = senderStreams.foreach {
+      case (player, stream) => session.connections(player).write(stream.map((_, msg) => msg.toString))
     }
+
+    println("Server started!")
   }
 }

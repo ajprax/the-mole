@@ -1,4 +1,4 @@
-package com.goldblastgames
+package com.goldblastgames.io
 
 // Chat Messages
 case class Message(
