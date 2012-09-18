@@ -36,35 +36,28 @@ object GameServer extends EchoApp {
 
     print("Starting server on port %d...".format(port))
 
-    val session = new Session(port, players)
+    val session = Session(port, players) { connections =>
 
-    // Build the socket sources.
-    val receivers = session.connections.values
+      // Chat system
+      val chatModule = ServerModule.chat(effects)
+      val chatInput = connections.values
+          .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
+      val chatOutput = chatModule(players.zip(chatInput).toMap)
+          .mapValues(_.map((_, msg) => msg.toString))
 
-    val messageSources = receivers
-      .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
-    val playerMessageSources = Map((players zip messageSources): _*)
+      // Mission system
+      val missionModule = ServerModule.mission()
+      val missionInput = connections.values
+          .map(_.filter(_ matches SubmitCommand.submitRegex).map((_, msg) => SubmitCommand.deserialize(msg)))
+      val missionOutput = missionModule(players.zip(missionInput).toMap)
+          .mapValues(_.map((_, msg) => msg.toString))
 
-    val commandSources = receivers
-          .map(_.filter(_ matches SubmitCommand.submitRegex)
-            .map((_, msg) => SubmitCommand.deserialize(msg)))
-    val playerCommandSources = Map((players zip commandSources): _*)
-
-    // Chat system
-    val chatModule = ServerModule.chat(effects)
-    val chatSources = chatModule(playerMessageSources)
-
-    // Mission system
-    val missionModule = ServerModule.mission()
-    val missionSources = missionModule(playerCommandSources)
-    
-    // Merge different streams.
-    // This is done weirdly, see: http://stackoverflow.com/questions/7755214/
-   val senderStreams: Map[Player, Event[Message]] = 
-     (missionSources.mapValues(Seq(_)) |+| chatSources.mapValues(Seq(_)) ).map{case (k, v) => k -> v.reduce(_ merge _)}
-    
-    val senders = senderStreams.foreach {
-      case (player, stream) => session.connections(player).write(stream.map((_, msg) => msg.toString))
+      // Merge different streams.
+      // This is done weirdly, see: http://stackoverflow.com/questions/7755214/
+      val output: Map[Player, Event[String]] = 
+          (missionOutput.mapValues(Seq(_)) |+| chatOutput.mapValues(Seq(_)))
+          .map { case (k, v) => k -> v.reduce(_ merge _) }
+      output
     }
 
     println("Server started!")

@@ -7,34 +7,49 @@ import java.net.Socket
 
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
+import com.github.oetzi.echo.core.Stepper
 
-class PlayerConnection(
+class PlayerSocket(
   val connect: Event[Socket],
   val name: String
 ) extends EventSource[String] {
 
-  // TODO: Make this not crash when the socket gets closed.
-  var out: Option[PrintWriter] = None
-
   connect.foreach { socket =>
-    // Update output.
-    PlayerConnection.this.synchronized {
-      out = Some(new PrintWriter(socket.getOutputStream, true))
-      println("Updating %s's socket".format(name))
-    }
 
-    // Add new input.
-    val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
     val thread = new Thread(new Runnable() {
+      val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
+
       def run() {
-        Iterator.continually(in.readLine).foreach(occur(_))
+        Iterator.continually(in.readLine).takeWhile(_ != null).foreach(occur(_))
+        println("Closing %s's socket".format(name))
+        in.close()
+        socket.close()
       }
     })
     thread.start()
   }
 
-  // TODO: Buffer messages instead of dropping them.
-  def write(data: Event[String]) {
-    data.foreach(msg => synchronized { out.map(_.println(msg)) })
-  }
+  val history = this.foldLeft(Seq[String]())(_ ++ Seq(_))
+}
+
+class PlayerConnection(
+  val socket: PlayerSocket,
+  val output: Event[String]
+) extends EventSource[String] {
+
+  val printWriters = socket.connect.map((_, s) => new PrintWriter(s.getOutputStream, true))
+
+  // Send messages.
+  val writers = printWriters.foldLeft(Seq[PrintWriter]())((seq, writer) => seq ++ Seq(writer))
+  writers.sample(output)
+      .foreach { case (msg, writer) => writer.foreach(_.println(msg)) }
+
+  // Forward messages from input.
+  socket.foreach(occur(_))
+
+  // Store message history.
+  val history = output.foldLeft(Seq[String]())(_ ++ Seq(_))
+
+  history.sample(printWriters)
+      .foreach { case (writer, hist) => hist.foreach(msg => { writer.println(msg) } ) }
 }

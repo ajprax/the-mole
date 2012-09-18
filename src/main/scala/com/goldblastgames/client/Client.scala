@@ -60,6 +60,7 @@ object Client extends EchoApp {
 
     // Print incoming messages.
     sender.foreach { received: String =>
+      println("Raw: %s".format(received))
       val msg = Message.deserialize(received)
       println("[ %s -> %s ]: %s".format(msg.sender, msg.channel, msg.body))
     }
