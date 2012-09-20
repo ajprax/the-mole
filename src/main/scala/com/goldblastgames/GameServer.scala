@@ -10,6 +10,7 @@ import com.github.oetzi.echo.io.Receiver
 import com.github.oetzi.echo.io.Sender
 
 import com.goldblastgames.chat.ChatEffect
+import com.goldblastgames.io.DeadDrop
 import com.goldblastgames.io.Message
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.server.ServerModule
@@ -39,28 +40,45 @@ object GameServer extends EchoApp {
 
     val session = Session(port, players) { connections =>
 
+      // Print raw input.
+      connections.foreach { case (player, connection) =>
+        connection.foreach(msg => println("Raw from %s: %s".format(player, msg)))
+      }
+
       // Chat system
       val chatModule = ServerModule.chat(effects)
-      val chatInput = connections.values
-          .map(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
-      val chatOutput = chatModule(players.zip(chatInput).toMap)
+      val chatInput = connections
+          .mapValues(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
+      val chatOutput = chatModule(chatInput)
           .mapValues(_.map((_, msg) => msg.toString))
 
       // Mission system
       val missionModule = ServerModule.mission(new TimedMissionChange(10000))
-      val missionInput = connections.values
-          .map(_.filter(_ matches SubmitCommand.submitRegex).map((_, msg) => SubmitCommand.deserialize(msg)))
-      val missionOutput = missionModule(players.zip(missionInput).toMap)
+      val missionInput = connections
+          .mapValues(_.filter(_ matches SubmitCommand.submitRegex).map((_, msg) => SubmitCommand.deserialize(msg)))
+      val missionOutput = missionModule(missionInput)
           .mapValues(_.map((_, msg) => msg.toString))
 
-      // Merge different streams.
-      // This is done weirdly, see: http://stackoverflow.com/questions/7755214/
-      val output: Map[Player, Event[String]] = 
-          (missionOutput.mapValues(Seq(_)) |+| chatOutput.mapValues(Seq(_)))
-          .map { case (k, v) => k -> v.reduce(_ merge _) }
-      output
+      // Dead-drop system
+      /* val deadDropModule = ServerModule.deadDrop(14400000L) */
+      val deadDropModule = ServerModule.deadDrop(5000L)
+      val deadDropInput = connections
+          .mapValues(_.filter(_ matches DeadDrop.deadDropRegex).map((_, msg) => DeadDrop.deserialize(msg)))
+      val deadDropOutput = deadDropModule(deadDropInput)
+          .mapValues(_.map((_, msg) => msg.toString))
+
+
+      // Join all the resulting streams and output them.
+      join(chatOutput, missionOutput, deadDropOutput)
     }
 
     println("Server started!")
   }
+
+  // Merge different streams.
+  // This is done weirdly, see: http://stackoverflow.com/questions/7755214/
+  def join(maps: Map[Player, Event[String]]*) = maps
+      .map(_.mapValues(Seq(_)))
+      .reduce(_ |+| _)
+      .mapValues(_.reduce(_ merge _))
 }

@@ -15,6 +15,7 @@ import com.github.oetzi.echo.io.Connection
 import com.github.oetzi.echo.io.Stdin
 
 import com.goldblastgames.io.Connect
+import com.goldblastgames.io.DeadDrop
 import com.goldblastgames.io.Message
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.skills.Skills
@@ -24,19 +25,31 @@ object PlayerSender {
     val socket = new Socket(host, port)
     val out = new PrintWriter(socket.getOutputStream, true)
     out.println(Connect(name).toString)
-    // messages.foreach(x => println(x))
     Connection(socket, messages)
   }
 }
 
 object Client extends EchoApp {
-  def setup(args: Array[String]) {
-    val logger = LoggerFactory.getLogger(this.getClass)
+  val logger = LoggerFactory.getLogger(this.getClass)
 
+  val channelRegex = """/channel (.+)"""
+  val channelMatcher = channelRegex.r
+
+  val deadDropRegex = """/deaddrop (.+)"""
+  val deadDropMatcher = deadDropRegex.r
+
+  val submitRegex = """/submit (\w+) (\w+)"""
+  val submitMatcher = submitRegex.r
+
+  def setup(args: Array[String]) {
+
+    // Make sure the right arguments have been specified.
     require(
       args.length == 2, 
       "Specify name and port as arguments"
     )
+
+    // Extract the arguments.
     val name = args(0)
     val port = args(1).toInt
     logger.info(
@@ -44,8 +57,7 @@ object Client extends EchoApp {
         .format(name, port)
     )
 
-    val channelRegex = """/channel (.+)"""
-    val channelMatcher = channelRegex.r
+
 
     // Handle channel switches.
     val channelSwitch = Stdin.filter(_ matches channelRegex).map { (_, msg) =>
@@ -55,7 +67,7 @@ object Client extends EchoApp {
     val dest = Stepper("All", channelSwitch)
 
     // TODO submit commands
-    val submitRegex = """/submit (\w+) (\w+)"""
+    // Handle skill submissions.
     val commands: Event[String] = Stdin.filter(in => in matches submitRegex).map {
       (_, msg) => {
         val List(skill, amt) = submitRegex.r.unapplySeq(msg).get
@@ -63,18 +75,35 @@ object Client extends EchoApp {
       }
     }.map((_, msg) => msg.toString)
 
-    val messages: Event[String] = Stdin.filter(in => !(in matches channelRegex) && !(in matches submitRegex))
+    // Handle deaddrops.
+    val deadDrops = Stdin.filter(_ matches deadDropRegex).map { (_, msg) =>
+      val deadDropMatcher(deadDrop) = msg
+      DeadDrop(deadDrop).toString
+    }
+
+    // Handle everything else.
+    val messages = Stdin.filter(in => !(in matches channelRegex) && !(in matches deadDropRegex) && !(in matches submitRegex))
         // Build a new Message.
         .map((_, msg) => new Message(name, dest.eval, msg))
         // Perform serialization.
         .map((_, msg) => msg.toString)
-    val sender = PlayerSender(name, "localhost", port, commands merge messages)
+
+    val sender = PlayerSender(name, "localhost", port, commands merge messages merge deadDrops)
+
+
 
     // Print incoming messages.
     sender.foreach { received: String =>
       println("Raw: %s".format(received))
-      val msg = Message.deserialize(received)
-      println("[ %s -> %s ]: %s".format(msg.sender, msg.channel, msg.body))
+
+      received match {
+
+        case DeadDrop.deadDropMatcher(drop) =>
+            println("[ DEADDROP ]: %s".format(drop))
+
+        case Message.messageMatcher(sender, channel, body) =>
+            println("[ %s -> %s ]: %s".format(sender, channel, body))
+      }
     }
   }
 }
