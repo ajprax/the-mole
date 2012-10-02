@@ -16,12 +16,15 @@ import com.github.oetzi.echo.io.Stdin
 
 import com.goldblastgames.io.Connect
 import com.goldblastgames.io.Message
+import com.goldblastgames.io.SubmitCommand
+import com.goldblastgames.skills.Skills
 
 object PlayerSender {
   def apply(name: String, host: String, port: Int, messages: Event[String]): Connection = {
     val socket = new Socket(host, port)
     val out = new PrintWriter(socket.getOutputStream, true)
     out.println(Connect(name).toString)
+    // messages.foreach(x => println(x))
     Connection(socket, messages)
   }
 }
@@ -51,12 +54,21 @@ object Client extends EchoApp {
     }
     val dest = Stepper("All", channelSwitch)
 
-    val messages = Stdin.filter(in => !(in matches channelRegex))
+    // TODO submit commands
+    val submitRegex = """/submit (\w+) (\w+)"""
+    val commands: Event[String] = Stdin.filter(in => in matches submitRegex).map {
+      (_, msg) => {
+        val List(skill, amt) = submitRegex.r.unapplySeq(msg).get
+        new SubmitCommand(name, Skills.withName(skill), amt.toInt)
+      }
+    }.map((_, msg) => msg.toString)
+
+    val messages: Event[String] = Stdin.filter(in => !(in matches channelRegex) && !(in matches submitRegex))
         // Build a new Message.
         .map((_, msg) => new Message(name, dest.eval, msg))
         // Perform serialization.
         .map((_, msg) => msg.toString)
-    val sender = PlayerSender(name, "localhost", port, messages)
+    val sender = PlayerSender(name, "localhost", port, commands merge messages)
 
     // Print incoming messages.
     sender.foreach { received: String =>

@@ -1,18 +1,9 @@
 package com.goldblastgames.mission
 
 import com.goldblastgames.Nation._
+import com.goldblastgames.skills.Skills._
 
-object Skills extends Enumeration {
-  type Skill = Value
-  val Subterfuge,
-    InformationGathering,
-    Wetwork,
-    Sabotage,
-    Sexitude,
-    Stoicism = Value
-}
-
-case class SkillRequirement(skill: Skills.Skill, min: Int) {
+case class SkillRequirement(skill: Skill, min: Int) {
   def humanString(): String = {
     "%s: %s".format(skill, min)
   }
@@ -25,6 +16,7 @@ object Rewards extends Enumeration {
 
 case class MissionObjective(
   primary: SkillRequirement, 
+  successFunc: (Boolean, Option[Boolean]) => Boolean, 
   secondary: Option[SkillRequirement], 
   reward: Rewards.Reward
 ) {
@@ -37,6 +29,8 @@ case class MissionObjective(
   }
 }
 
+case class Mission(day: Int, linked: String, opposed: String, primaryType: String, skills: List[String], rewards: List[List[String]]) 
+/*
 case class Mission(
   id: Int,
   team: Nation,
@@ -44,7 +38,7 @@ case class Mission(
   secondaryObjective: MissionObjective,
   description: String
 ) {
-  override def toString(): String = {
+  def humanString(): String = {
     ("Mission #%s for Team %s: \n" +
     "Primary Objective requires: %s \n" +
     "Secondary Objective requires: %s \n" +
@@ -57,22 +51,112 @@ case class Mission(
     )
   }
 }
+*/
+case class MissionResult(
+  mission: Mission,
+  success: Boolean,
+  level1: Option[Debriefing1],
+  level2: Option[Debriefing2],
+  body: String
+)
+
+// TODO: Actual mission debriefing detail.
+case class Debriefing1(
+  margins: Map[MissionObjective, Int] 
+)
+
+case class Debriefing2(
+  submitted: Map[Skill, Int]
+)
 
 object Mission {
   // TODO(Issue-36): actually generate missions
-  val dummyMission = 
-    new Mission(System.currentTimeMillis.toInt,
-      America, 
-      new MissionObjective(
-        new SkillRequirement(Skills.InformationGathering, 2), 
-        Some(new SkillRequirement(Skills.Stoicism, 1)),
-        Rewards.MRD
-      ),
-      new MissionObjective(
-        new SkillRequirement(Skills.Stoicism, 3),
-        None,
-        Rewards.points
-      ),
-      "Dummy mission alert"
-    )
+
+  val nextMission = new AaronGenerator(1).next
+}
+
+class AaronGenerator(day: Int) {
+  import scala.util.Random
+  val random = new Random()
+  def getDifficulty() = {
+    def baseDifficulty = if (day < 10) (day / 2).toInt else 5 // slowly increment difficulty
+    // this is a little longer than it really needs to be, but this way we can easily adjust the range of difficulties
+    val difficultyScale: Array[Double] = Array(-1.5, -0.5, 0.5, 1.5)
+    val difficultyRandomized = random.nextGaussian
+    def minimum(x: Int): Int = if (x > 1) x else 1 // prevents impossible difficulties
+                                                   // maximum is already enforced by baseDifficulty
+    if (difficultyRandomized < difficultyScale(0))
+      minimum(baseDifficulty - 2)
+    else if (difficultyRandomized < difficultyScale(1))
+      minimum(baseDifficulty - 1)
+    else if (difficultyRandomized < difficultyScale(2))
+      minimum(baseDifficulty)
+    else if (difficultyRandomized < difficultyScale(3))
+      minimum(baseDifficulty + 1)
+    else
+      minimum(baseDifficulty + 2)
+    }
+  def linked = if (random.nextInt(10) > 5) "linked" else "unlinked" // does secondary objective require primary
+  def opposed = if (random.nextInt(3) == 0) "opposed" else "unopposed" // is secondary objective relative or absolute
+  def primaryType = {
+    val primaryRandomized = random.nextInt(4)
+    if (primaryRandomized < 2) "single"
+    else if (primaryRandomized < 3) "AND"
+    else "OR"
+    }
+  // getSkills works, but it's pretty unweildy
+  def getSkills = {
+    val shuffledSkills = random.shuffle(List(random.shuffle(List("Subterfuge", "Information Gathering")), random.shuffle(List("Wetwork", "Sabotage")), random.shuffle(List("Sexitude", "Stocism"))))
+    List(shuffledSkills(0)(0), shuffledSkills(1)(0), shuffledSkills(2)(0))
+    }
+  def getRewards = { // all rewards are the same probability at all times for now
+    val missionRewards = List(
+      "10 points",
+      "Negative communication effect for the enemy camp",
+      "The enemy camp will suffer a crisis in the next 48 hours",
+      "Reset the cooldown of all abilities of players in your camp",
+      "Your camp votes for a player to receive a special ability",
+      "Double the positive effects of your next mission",
+      "5 points",
+      "15 points",
+      "Mission debriefing detail +1",
+      "Missiong debriefing detail +2",
+      "A random player in your camp gets +1 to a skill minimum"
+      )
+    val shuffledRewards = random.shuffle(missionRewards)
+    val negativeComms = List(
+      "Random words are redacted from enemy messages for 24 hours",
+      "Enemy camp private messages are sent to random recipients in the same camp for 24 hours",
+      "Enemy camp cannot send private messages for 24 hours",
+      "Enemy camp messages are anonymous for 24 hours",
+      "Enemy camp does not receive dead drop messages for 18 hours"
+      )
+    val shuffledNegativeComms = random.shuffle(negativeComms)
+    val specialAbilities = List(
+      "View one players allegiance in the next 24 hours",
+      "During the next mission or crisis your skill use is free, must be used within 72 hours",
+      "Choose between two options for your next mission"
+      )
+    val shuffledSpecialAbilities = random.shuffle(specialAbilities)
+    val selectedRewards = List(shuffledRewards(0), shuffledRewards(1))
+    val possibleRewardDetails = List(
+      shuffledNegativeComms(0),
+      shuffledNegativeComms(1),
+      shuffledSpecialAbilities(0),
+      shuffledSpecialAbilities(1)
+      )
+    def matchRewards(rewardNumber: Int) = {
+      if (selectedRewards(rewardNumber) == "Negative communication effect for the enemy camp")
+        possibleRewardDetails(rewardNumber)
+      else if (selectedRewards(rewardNumber) == "Your camp votes for a player to receive a special ability")
+        possibleRewardDetails(rewardNumber + 2)
+      else
+        "none"
+      }
+    List(selectedRewards, List(matchRewards(0), matchRewards(1)))
+    }
+  def allInOne =
+    List(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
+  def next =
+    new Mission(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
 }

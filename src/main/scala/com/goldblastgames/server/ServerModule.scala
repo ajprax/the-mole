@@ -3,7 +3,6 @@ package com.goldblastgames.server
 import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
-import com.github.oetzi.echo.core.Stepper
 
 // TODO: Make a channel object explicitly that is an Event that returns events.
 //       May necessitate modifying echo with the CanBuild pattern
@@ -11,6 +10,7 @@ import com.goldblastgames.chat.ChatEffect
 import com.goldblastgames.io.Message
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.mission._
+import com.goldblastgames.skills._
 import com.goldblastgames.Nation._
 import com.goldblastgames.Player
 
@@ -21,28 +21,41 @@ case class ServerModule[T, U] (
 }
 
 object ServerModule {
-  def mission(): ServerModule[SubmitCommand, Message] = {
-    
-    val missionChange = new TimedMissionChange(10000) 
-    val currentMission = Stepper[Mission](Mission.dummyMission, missionChange)
-
-    // Build new mission notifications
+  def mission(missionSource: TimedMissionChange): ServerModule[SubmitCommand, Message] = {
+        
     ServerModule(
       sources => {
+        // Mission Tracker
+        val missionTracker = new MissionTracker(missionSource)
+
         // TODO(issue-33): Resolve missions based on submitted skills.
 
-        // When the mission changes, notify everyone!
-        // TODO Mission Debriefing for previous mission, 
-        // which will be different per team
-        // as they have different level of detail.
-         val newMissionSinks = sources.keys.map {
+        //TODO reset skilltracker after each mission
+        val skillTracker = new SkillTracker(sources, missionTracker)
+
+        val missionSinks = sources.keys.map {
           case p @ Player(name, camp, allegiance) => {
-            p -> missionChange.map((_, mission) => new Message("Mission Center", name, mission.description))
+            p -> {
+              // Previous mission debriefing
+              val debriefing: Event[Message] = 
+                missionSource.map((_, mission) => 
+                  new Message(
+                    "Mission Report", 
+                    name, 
+                    skillTracker.prevResult.eval().toString
+                  )
+                )
+
+              // New mission notifications
+              val notifications: Event[Message] = missionSource.map((_, mission) => new Message("Mission Center", name, mission.toString))
+
+              // Merge new mission notifications and debriefing notifications
+              debriefing merge notifications
+            }
           }
         }
 
-      // TODO merge prevMissionDebriefing with newMissionNotification
-      Map(newMissionSinks.toSeq: _*)
+      Map(missionSinks.toSeq: _*)
     })
   }  
 
