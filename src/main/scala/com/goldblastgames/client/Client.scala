@@ -94,7 +94,7 @@ object Client extends EchoApp {
 
     // Print incoming messages.
     sender.foreach { received: String =>
-      println("Raw: %s".format(received))
+      //println("Raw: %s".format(received))
 
       received match {
 
