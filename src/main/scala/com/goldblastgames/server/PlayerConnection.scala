@@ -1,55 +1,64 @@
 package com.goldblastgames.server
 
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.PrintWriter
+import java.io.EOFException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.Socket
 
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
 import com.github.oetzi.echo.core.Stepper
 
-class PlayerSocket(
-  val connect: Event[Socket],
-  val name: String
-) extends EventSource[String] {
+import com.goldblastgames.io.Packet
 
-  connect.foreach { socket =>
+class PlayerSocket(
+  val connect: Event[(ObjectInputStream, ObjectOutputStream)],
+  val name: String
+) extends EventSource[Packet] {
+
+  connect.foreach { case (in, _) =>
 
     val thread = new Thread(new Runnable() {
-      val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
-
       def run() {
-        Iterator.continually(in.readLine).takeWhile(_ != null).foreach(occur(_))
+        Iterator
+            .continually({
+              try {
+                in.readObject
+              } catch {
+                case ex: EOFException => null
+              }
+            })
+            .takeWhile(_ != null)
+            .collect({ case x: Packet => x })
+            .foreach(occur(_))
         println("Closing %s's socket".format(name))
         in.close()
-        socket.close()
       }
     })
     thread.start()
   }
 
-  val history = this.foldLeft(Seq[String]())(_ ++ Seq(_))
+  val history = this.foldLeft(Seq[Packet]())(_ ++ Seq(_))
 }
 
 class PlayerConnection(
   val socket: PlayerSocket,
-  val output: Event[String]
-) extends EventSource[String] {
+  val output: Event[Packet]
+) extends EventSource[Packet] {
 
-  val printWriters = socket.connect.map((_, s) => new PrintWriter(s.getOutputStream, true))
+  val printWriters = socket.connect.map { case (_, (_, out)) => out }
 
   // Send messages.
-  val writers = printWriters.foldLeft(Seq[PrintWriter]())((seq, writer) => seq ++ Seq(writer))
+  val writers = printWriters.foldLeft(Seq[ObjectOutputStream]())((seq, writer) => seq ++ Seq(writer))
   writers.sample(output)
-      .foreach { case (msg, writer) => writer.foreach(_.println(msg)) }
+      .foreach { case (msg, writer) => writer.foreach { out => out.writeObject(msg); out.flush() } }
 
   // Forward messages from input.
   socket.foreach(occur(_))
 
   // Store message history.
-  val history = output.foldLeft(Seq[String]())(_ ++ Seq(_))
+  val history = output.foldLeft(Seq[Packet]())(_ ++ Seq(_))
 
   history.sample(printWriters)
-      .foreach { case (writer, hist) => hist.foreach(msg => { writer.println(msg) } ) }
+      .foreach { case (writer, hist) => hist.foreach { msg => writer.writeObject(msg); writer.flush() } }
 }
