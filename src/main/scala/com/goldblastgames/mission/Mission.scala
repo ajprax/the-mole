@@ -72,14 +72,14 @@ case class Debriefing2(
 object Mission {
   // TODO(Issue-36): actually generate missions
 
-  val nextMission = new AaronGenerator(1).next
+  def nextMission = new AaronGenerator(1).next // 1 should be repalced with a day tracking behavior
 }
 
 class AaronGenerator(day: Int) {
   import scala.util.Random
   val random = new Random()
-  def getDifficulty() = {
-    def baseDifficulty = if (day < 10) (day / 2).toInt else 5 // slowly increment difficulty
+  def getDifficulty = {
+    val baseDifficulty = if (day < 10) (day / 2).toInt else 5 // slowly increment difficulty
     // this is a little longer than it really needs to be, but this way we can easily adjust the range of difficulties
     val difficultyScale: Array[Double] = Array(-1.5, -0.5, 0.5, 1.5)
     val difficultyRandomized = random.nextGaussian
