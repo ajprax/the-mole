@@ -120,7 +120,7 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Allow server to send messages directly to players
-      val dmModule: ServerModule[Packet, Message] { sources =>
+      val dmModule = ServerModule[Packet, Message] { sources =>
         val playerNameMap = players.map(_.name).zip(players).toMap
 
         val dmMessages = Stdin.filter(_ matches dmRegex)
