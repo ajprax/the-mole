@@ -29,7 +29,32 @@ case class MissionObjective(
   }
 }
 
-case class Mission(day: Int, linked: String, opposed: String, primaryType: String, skills: List[String], rewards: List[List[String]]) 
+case class Mission(
+  day: Int,
+  difficulty: Int,
+  linked: Boolean,
+  opposed: Boolean,
+  primaryType: String,
+  skills: List[String],
+  rewards: List[List[String]]
+) {
+
+  override def toString: String = {
+    val lineOne = "Mission #%s:".format(day)
+    val lineTwoA = if (primaryType == "AND") "and"
+                   else if (primaryType == "OR") "or"
+                   else null
+    val lineTwoB = if (primaryType == "single") skills(1) else null
+    val lineTwo = "Primary Objective requires: %s %s %s".format(skills(0), lineTwoA, lineTwoB)
+    val lineThree = "  difficulty: exceed the enemy by: " + difficulty
+    val lineFour = "  rewards: " + rewards(0)(0)
+    val lineFiveA = if (linked) " and completion of the Primary Objective" else null
+    val lineFive = "Secondary Objective requires: " + skills(2) + lineFiveA
+    val lineSix = if (opposed) "  difficulty: exceed the enemy by: " + difficulty else "  difficulty: exceed %s in total submissions".format((difficulty + 6))
+    val lineSeven = "  rewards: " + rewards(0)(1)
+    "%s\n%s\n%s\n%s\n%s\n%s\n%s".format(lineOne, lineTwo, lineThree, lineFour, lineFive, lineSix, lineSeven)
+  }
+}
 /*
 case class Mission(
   id: Int,
@@ -96,8 +121,8 @@ class AaronGenerator(day: Int) {
     else
       minimum(baseDifficulty + 2)
     }
-  def linked = if (random.nextInt(10) > 5) "linked" else "unlinked" // does secondary objective require primary
-  def opposed = if (random.nextInt(3) == 0) "opposed" else "unopposed" // is secondary objective relative or absolute
+  def linked = random.nextInt(10) > 5 // does secondary objective require primary
+  def opposed = random.nextInt(3) == 0 // is secondary objective relative or absolute
   def primaryType = {
     val primaryRandomized = random.nextInt(4)
     if (primaryRandomized < 2) "single"
@@ -158,5 +183,5 @@ class AaronGenerator(day: Int) {
   def allInOne =
     List(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
   def next =
-    new Mission(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
+    new Mission(day, getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
 }
