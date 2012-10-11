@@ -14,6 +14,7 @@ import com.github.oetzi.echo.io.Stdin
 import com.goldblastgames.chat.ChatEffect
 import com.goldblastgames.io.DeadDrop
 import com.goldblastgames.io.Message
+import com.goldblastgames.io.Packet
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.server.ServerModule
 import com.goldblastgames.server.Session
@@ -95,26 +96,26 @@ object GameServer extends EchoApp {
       // Chat system
       val chatModule = ServerModule.chat(effects)
       val chatInput = connections
-          .mapValues(_.filter(_ matches Message.messageRegex).map((_, msg) => Message.deserialize(msg)))
+          .mapValues(_.filter(_.isInstanceOf[Message]).map((_, msg) => msg.asInstanceOf[Message]))
       val chatOutput = chatModule(chatInput)
-          .mapValues(_.map((_, msg) => msg.toString))
+          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Mission system
-      val missionModule = ServerModule.mission(new TimedMissionChange(14400000L))
+      val missionModule = ServerModule.mission(new TimedMissionChange(14400000L * 6))
       val missionInput = connections
-          .mapValues(_.filter(_ matches SubmitCommand.submitRegex).map((_, msg) => SubmitCommand.deserialize(msg)))
+          .mapValues(_.filter(_.isInstanceOf[SubmitCommand]).map((_, msg) => msg.asInstanceOf[SubmitCommand]))
       val missionOutput = missionModule(missionInput)
-          .mapValues(_.map((_, msg) => msg.toString))
+          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Dead-drop system
       val deadDropModule = ServerModule.deadDrop(14400000L)
       val deadDropInput = connections
-          .mapValues(_.filter(_ matches DeadDrop.deadDropRegex).map((_, msg) => DeadDrop.deserialize(msg)))
+          .mapValues(_.filter(_.isInstanceOf[DeadDrop]).map((_, msg) => msg.asInstanceOf[DeadDrop]))
       val deadDropOutput = deadDropModule(deadDropInput)
-          .mapValues(_.map((_, msg) => msg.toString))
+          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Allow server to send messages directly to players
-      val dmModule = ServerModule[String, Message] { sources =>
+      val dmModule = ServerModule[Packet, Message] { sources =>
         val playerNameMap = players.map(_.name).zip(players).toMap
 
         val dmMessages = Stdin.filter(_ matches dmRegex)
@@ -130,7 +131,7 @@ object GameServer extends EchoApp {
             .map { case (player, messages) => (player, messages.map((_, msg) => { println("Sending server message: %s".format(msg._2)); Message("server", player.name, msg._2) } )) }
       }
       val dmOutput = dmModule(Map())
-          .mapValues(_.map((_, msg) => msg.toString))
+          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Join all the resulting streams and output them.
       join(chatOutput, missionOutput, deadDropOutput, dmOutput)
@@ -141,7 +142,7 @@ object GameServer extends EchoApp {
 
   // Merge different streams.
   // This is done weirdly, see: http://stackoverflow.com/questions/7755214/
-  def join(maps: Map[Player, Event[String]]*) = maps
+  def join(maps: Map[Player, Event[Packet]]*) = maps
       .map(_.mapValues(Seq(_)))
       .reduce(_ |+| _)
       .mapValues(_.reduce(_ merge _))

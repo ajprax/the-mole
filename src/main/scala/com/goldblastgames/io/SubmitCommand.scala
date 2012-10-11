@@ -9,15 +9,4 @@ case class SubmitCommand(
   sender: String,
   skill: Skill,
   amount: Int
-)
-
-object SubmitCommand {
-  // Matches a submit command
-  val submitRegex = """SubmitCommand\((.*),(.*),(.*)\)"""
-  val submitMatcher = submitRegex.r
-  def deserialize(serialized: String): SubmitCommand = {
-    val submitMatcher(sender, skill, amount) = serialized
-
-    SubmitCommand(sender, Skills.withName(skill), amount.toInt)
-  }
-}
+) extends Packet

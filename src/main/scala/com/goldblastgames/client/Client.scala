@@ -2,7 +2,8 @@ package com.goldblastgames.client
 
 import scala.io.Source
 
-import java.io.PrintWriter
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.Socket
 
 import org.slf4j.Logger
@@ -17,15 +18,23 @@ import com.github.oetzi.echo.io.Stdin
 import com.goldblastgames.io.Connect
 import com.goldblastgames.io.DeadDrop
 import com.goldblastgames.io.Message
+import com.goldblastgames.io.Packet
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.skills.Skills
+import com.goldblastgames.server.PlayerConnection
+import com.goldblastgames.server.PlayerSocket
 
 object PlayerSender {
-  def apply(name: String, host: String, port: Int, messages: Event[String]): Connection = {
+  def apply(name: String, host: String, port: Int, messages: Event[Packet]): PlayerConnection = {
     val socket = new Socket(host, port)
-    val out = new PrintWriter(socket.getOutputStream, true)
-    out.println(Connect(name).toString)
-    Connection(socket, messages)
+    val in = new ObjectInputStream(socket.getInputStream)
+    val out = new ObjectOutputStream(socket.getOutputStream)
+
+    println("Sending connect message...")
+    out.writeObject(Connect(name))
+    out.flush()
+
+    new PlayerConnection(new PlayerSocket(Event(in -> out), name), messages)
   }
 }
 
@@ -58,7 +67,6 @@ object Client extends EchoApp {
     )
 
 
-
     // Handle channel switches.
     val channelSwitch = Stdin.filter(_ matches channelRegex).map { (_, msg) =>
       val channelMatcher(channel) = msg
@@ -68,41 +76,44 @@ object Client extends EchoApp {
 
     // TODO submit commands
     // Handle skill submissions.
-    val commands: Event[String] = Stdin.filter(in => in matches submitRegex).map {
-      (_, msg) => {
-        val List(skill, amt) = submitRegex.r.unapplySeq(msg).get
-        new SubmitCommand(name, Skills.withName(skill), amt.toInt)
-      }
-    }.map((_, msg) => msg.toString)
+    val commands: Event[Packet] = Stdin
+        .filter(in => in matches submitRegex)
+        // Build a new Command.
+        .map { (_, msg) =>
+          val submitMatcher(skill, amt) = msg
+          SubmitCommand(name, Skills.withName(skill), amt.toInt)
+        }
 
     // Handle deaddrops.
-    val deadDrops = Stdin.filter(_ matches deadDropRegex).map { (_, msg) =>
-      val deadDropMatcher(deadDrop) = msg
-      DeadDrop(deadDrop).toString
-    }
+    val deadDrops: Event[Packet] = Stdin
+        .filter(_ matches deadDropRegex)
+        // Build a new DeadDrop.
+        .map { (_, msg) =>
+          val deadDropMatcher(deadDrop) = msg
+          DeadDrop(deadDrop)
+        }
 
     // Handle everything else.
-    val messages = Stdin.filter(in => !(in matches channelRegex) && !(in matches deadDropRegex) && !(in matches submitRegex))
+    val messages: Event[Packet] = Stdin
+        .filter(in => !(in matches channelRegex) && !(in matches deadDropRegex) && !(in matches submitRegex))
         // Build a new Message.
-        .map((_, msg) => new Message(name, dest.eval, msg))
-        // Perform serialization.
-        .map((_, msg) => msg.toString)
+        .map { (_, msg) => 
+          Message(name, dest.eval, msg)
+        }
 
-    val sender = PlayerSender(name, "localhost", port, commands merge messages merge deadDrops)
+    val output: Event[Packet] = commands merge messages merge deadDrops
+    output.foreach(packet => logger.debug("Sending packet: %s".format(packet)))
 
+    val sender = PlayerSender(name, "localhost", port, output)
 
 
     // Print incoming messages.
-    sender.foreach { received: String =>
-      //println("Raw: %s".format(received))
+    sender.foreach { received: Packet =>
+      logger.debug("Received packet: %s".format(received))
 
       received match {
-
-        case DeadDrop.deadDropMatcher(drop) =>
-            println("[ DEADDROP ]: %s".format(drop))
-
-        case Message.messageMatcher(sender, channel, body) =>
-            println("[ %s -> %s ]: %s".format(sender, channel, body))
+        case DeadDrop(drop) => println("[ DEADDROP ]: %s".format(drop))
+        case Message(sender, channel, body) => println("[ %s -> %s ]: %s".format(sender, channel, body))
       }
     }
   }
