@@ -1,42 +1,18 @@
 package com.goldblastgames.client
 
-import scala.io.Source
-
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
-import java.net.Socket
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import com.github.oetzi.echo.EchoApp
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.Stepper
-import com.github.oetzi.echo.io.Connection
 import com.github.oetzi.echo.io.Stdin
 
-import com.goldblastgames.io.Connect
 import com.goldblastgames.io.DeadDrop
 import com.goldblastgames.io.Message
 import com.goldblastgames.io.Packet
 import com.goldblastgames.io.SubmitCommand
 import com.goldblastgames.skills.Skills
-import com.goldblastgames.server.PlayerConnection
-import com.goldblastgames.server.PlayerSocket
-
-object PlayerSender {
-  def apply(name: String, host: String, port: Int, messages: Event[Packet]): PlayerConnection = {
-    val socket = new Socket(host, port)
-    val in = new ObjectInputStream(socket.getInputStream)
-    val out = new ObjectOutputStream(socket.getOutputStream)
-
-    println("Sending connect message...")
-    out.writeObject(Connect(name))
-    out.flush()
-
-    new PlayerConnection(new PlayerSocket(Event(in -> out), name), messages)
-  }
-}
 
 object Client extends EchoApp {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -104,11 +80,11 @@ object Client extends EchoApp {
     val output: Event[Packet] = commands merge messages merge deadDrops
     output.foreach(packet => logger.debug("Sending packet: %s".format(packet)))
 
-    val sender = PlayerSender(name, "localhost", port, output)
+    val (in, out) = ClientConnection(name, "localhost", port, output)
 
 
     // Print incoming messages.
-    sender.foreach { received: Packet =>
+    in.foreach { received: Packet =>
       logger.debug("Received packet: %s".format(received))
 
       received match {

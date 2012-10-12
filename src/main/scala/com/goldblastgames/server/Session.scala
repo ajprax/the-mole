@@ -20,9 +20,7 @@ class Session private(
   val module: Map[Player, Event[Packet]] => Map[Player, Event[Packet]]
 ) {
 
-  type SocketStreams = (ObjectInputStream, ObjectOutputStream)
-
-  val server = new EventSource[(String, SocketStreams)] {
+  val server = new EventSource[(String, (ObjectInputStream, ObjectOutputStream))] {
     Server(port, x => x)
         .foreach { socket =>
           val out: ObjectOutputStream = new ObjectOutputStream(socket.getOutputStream)
@@ -42,17 +40,38 @@ class Session private(
           }
         }
   }
+  val inputStreams = server.map { (_, connection) =>
+    val (name, (inputStream, _)) = connection
 
-  private def playerFilter(input: Event[(String, SocketStreams)], name: String) = input
-      .filter({ case (n, _) => n == name })
-      .map((_, x) => x._2)
+    (name, inputStream)
+  }
+  val outputStreams = server.map { (_, connection) =>
+    val (name, (_, outputStream)) = connection
 
-  val inputs: Map[Player, PlayerSocket] = players
-      .map(p => p -> new PlayerSocket(playerFilter(server, p.name), p.name))
+    (name, outputStream)
+  }
+
+  val inputs: Map[Player, PlayerInput] = players
+      .map({ player =>
+        val input = inputStreams
+            .filter({ case (name, _) => name == player.name })
+            .map((_, x) => x._2)
+
+        (player, new PlayerInput(player.name, input))
+      })
       .toMap
 
-  val outputs: Map[Player, PlayerConnection] = module(inputs)
-      .map { case (p, output) => p -> new PlayerConnection(inputs(p), output) }
+  val moduleOutputs = module(inputs)
+
+  val outputs: Map[Player, PlayerOutput] = players
+      .map({ player =>
+        val output = outputStreams
+            .filter({ case (name, _) => name == player.name })
+            .map((_, x) => x._2)
+        
+        (player, new PlayerOutput(player.name, output, moduleOutputs(player)))
+      })
+      .toMap
 }
 
 object Session {
