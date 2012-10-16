@@ -70,7 +70,7 @@ object GameServer extends EchoApp {
     val port = 2552
     val players = Seq(
       Player("aaron", America, America),
-      Player("christophe", America, America),
+      Player("william", America, America),
       Player("kane", America, USSR),
       Player("clayton", USSR, USSR),
       Player("daisy", USSR, USSR),
