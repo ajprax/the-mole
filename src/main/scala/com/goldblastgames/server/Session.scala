@@ -8,7 +8,6 @@ import java.net.Socket
 
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
-import com.github.oetzi.echo.io.Server
 
 import com.goldblastgames.Player
 import com.goldblastgames.io.Connect
@@ -21,7 +20,7 @@ class Session private(
 ) {
 
   val server = new EventSource[(String, (ObjectInputStream, ObjectOutputStream))] {
-    Server(port, x => x)
+    Listener(port)
         .foreach { socket =>
           val out: ObjectOutputStream = new ObjectOutputStream(socket.getOutputStream)
           val in: ObjectInputStream = new ObjectInputStream(socket.getInputStream)

@@ -7,8 +7,6 @@ import com.github.oetzi.echo.EchoApp
 import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.Switcher
-import com.github.oetzi.echo.io.Receiver
-import com.github.oetzi.echo.io.Sender
 import com.github.oetzi.echo.io.Stdin
 
 import com.goldblastgames.chat.ChatEffect
