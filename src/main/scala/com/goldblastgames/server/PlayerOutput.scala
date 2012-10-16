@@ -13,7 +13,7 @@ class PlayerOutput(
   val output: Event[Packet]
 ) {
 
-  // Aggregate incoming outputStreams.
+  // Store incoming outputStreams.
   val outputStreams: Behaviour[Seq[ObjectOutputStream]] = {
     val init: Seq[ObjectOutputStream] = Seq()
     def combine(outs: Seq[ObjectOutputStream], out: ObjectOutputStream) = outs ++ Seq(out)
@@ -35,7 +35,7 @@ class PlayerOutput(
       }
 
   // Store outgoing packets.
-  val history = {
+  val history: Behaviour[Seq[Packet]] = {
     val init: Seq[Packet] = Seq()
     def combine(packets: Seq[Packet], packet: Packet) = packets ++ Seq(packet)
 

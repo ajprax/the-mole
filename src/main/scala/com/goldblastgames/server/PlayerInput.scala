@@ -3,6 +3,7 @@ package com.goldblastgames.server
 import java.io.EOFException
 import java.io.ObjectInputStream
 
+import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
 
@@ -36,7 +37,7 @@ class PlayerInput(
   }
 
   // Store received packets.
-  val history = {
+  val history: Behaviour[Seq[Packet]] = {
     val init: Seq[Packet] = Seq()
     def combine(packets: Seq[Packet], packet: Packet) = packets ++ Seq(packet)
 

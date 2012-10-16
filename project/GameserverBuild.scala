@@ -20,7 +20,13 @@ object GameserverBuild extends Build {
         "org.scalaz" %% "scalaz-core" % "6.0.4",
 
         // Test dependencies.
-        "org.specs2" %% "specs2" % "1.12.1" % "test"
+        "org.specs2" %% "specs2" % "1.12.1" % "test",
+        "org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
+        "org.apache.commons" % "commons-lang3" % "3.1" % "test"
+      ),
+      resolvers ++= Seq(
+        "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
+        "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
       )
     )
   )
