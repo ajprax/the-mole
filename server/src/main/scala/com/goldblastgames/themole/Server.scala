@@ -7,6 +7,8 @@ import com.github.oetzi.echo.EchoApp
 import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.Switcher
+import com.github.oetzi.echo.io.Receiver
+import com.github.oetzi.echo.io.Sender
 import com.github.oetzi.echo.io.Stdin
 
 import com.goldblastgames.themole.chat.ChatEffect
@@ -94,12 +96,12 @@ object Server extends EchoApp {
 
       // Gambit system
       val gambitModule = ServerModule.gambit()
-      val gambitInput = connections.mapValues(_.filter(_ matches GambitCommand.gambitRegex).map((_, cmd) => GambitCommand.deserialize(cmd)))
+      val gambitInput = connections.mapValues(_.filter(_.isInstanceOf[GambitCommand]).map((_, cmd) => cmd.asInstanceOf[GambitCommand]))
       val (gambitMessages, gambitEffects): (Map[Player, Event[Message]], Behaviour[Seq[AppliedEffect[Any, Any]]]) = gambitModule(gambitInput)
-      val chatEffects = gambitEffects.map(effects => effects.collect{ case x: AppliedEffect[Message, Message] => x})
+      val chatEffects: Behaviour[Seq[AppliedEffect[Message,Message]]] = gambitEffects.map(effects => effects.collect{ case x => x.asInstanceOf[AppliedEffect[Message, Message]]})
 
       // Chat system
-      val chatModule = ServerModule.chat(gambitEffects)
+      val chatModule = ServerModule.chat(chatEffects)
       val chatInput = connections
           .mapValues(_.filter(_.isInstanceOf[Message]).map((_, msg) => msg.asInstanceOf[Message]))
       val chatOutput = chatModule(chatInput)
@@ -120,7 +122,7 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Allow server to send messages directly to players
-      val dmModule = ServerModule[Packet, Message] { sources =>
+      val dmModule: ServerModule[Packet, Message] = { sources =>
         val playerNameMap = players.map(_.name).zip(players).toMap
 
         val dmMessages = Stdin.filter(_ matches dmRegex)

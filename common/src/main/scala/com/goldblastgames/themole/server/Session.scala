@@ -67,7 +67,7 @@ class Session private(
         val output = outputStreams
             .filter({ case (name, _) => name == player.name })
             .map((_, x) => x._2)
-        
+
         (player, new PlayerOutput(player.name, output, moduleOutputs(player)))
       })
       .toMap

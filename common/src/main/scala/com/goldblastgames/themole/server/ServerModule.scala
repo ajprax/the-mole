@@ -155,7 +155,7 @@ object ServerModule {
     }
   }
 
-  def chat(effects: Behaviour[Seq[AppliedEffect[Any, Any]]]): ServerModule[Message, Message] = {
+  def chat(effects: Behaviour[Seq[AppliedEffect[Message, Message]]]): ServerModule[Message, Message] = {
 
     def channel(name: String, input: Event[Message]) = input.filter(_.channel == name)
 
@@ -178,13 +178,12 @@ object ServerModule {
       // Build sets of player's sink components.
       val sinks = sources.keys.map {
         case p @ Player(name, nation, _) => {
-          val applicableEffects = effects.filter(_.select(p))
           val channelSinks = allChannel merge campChannels(nation) merge playerChannels(p)
 
           channelSinks.foreach(msg => println("[%s %s]".format(name, msg)))
 
           // TODO: Use these timestamps.
-          p -> channelSinks.map((_, msg) => applicableEffects.foldLeft(msg)((x, f) => f(x)))
+          p -> channelSinks.map((_, msg) => effects.eval.filter(_.targets.contains(p)).foldLeft(msg)((x, applied) => applied.effect(x)))
         }
       }
       sinks.toMap
@@ -201,7 +200,7 @@ object ServerModule {
           sources.map {
             case (player, commandEvent) => {
               val responseMessage: Event[Message] =
-                  commandEvent.map((_, command) => new Message("blope", player.name, "message body"))
+                  commandEvent.map((_, command) => new Message("blope", player.name, "Your gambit has been received."))
               (player, responseMessage)
             }
           }
