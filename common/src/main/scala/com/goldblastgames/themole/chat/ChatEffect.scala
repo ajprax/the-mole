@@ -6,29 +6,30 @@ import com.github.oetzi.echo.core.Behaviour
 
 import com.goldblastgames.themole.Player
 import com.goldblastgames.themole.io.Message
+import com.goldblastgames.themole.gambits.Effect
 
 case class ChatEffect(
   val effect: Message => Message,
   val enabled: Behaviour[Boolean],
   val select: Player => Boolean
-) extends (Message => Message) {
-  def apply(msg: Message): Message = 
-    if (enabled.eval) 
-      effect(msg) 
-    else 
+) extends Effect[Message, Message] {
+  def apply(msg: Message): Message =
+    if (enabled.eval)
+      effect(msg)
+    else
       msg
 }
 
 object ChatEffect {
-  // These are specific chat effects that are instances of the case class ChatEffect above.  
+  // These are specific chat effects that are instances of the case class ChatEffect above.
   // The effect: Message=>Message parameters are the functions that are implemented in the second half of this object.
   def redact(enabled: Behaviour[Boolean], select: Player => Boolean) = ChatEffect(redactMessage, enabled, select)
   def anonymize(enabled: Behaviour[Boolean], select: Player => Boolean) = ChatEffect(anonymizeMessage, enabled, select)
   def shuffle(enabled: Behaviour[Boolean], select: Player => Boolean) = ChatEffect(shuffleMessage, enabled, select)
 
- //----------------------------------------------------------- 
+ //-----------------------------------------------------------
  // The following implement the methods that transform messages.
- //----------------------------------------------------------- 
+ //-----------------------------------------------------------
 
   // Anonymize the message (sender -> "anonymous")
   def anonymizeMessage(msg: Message): Message = {
@@ -46,7 +47,7 @@ object ChatEffect {
     val random = new Random((msg.sender + msg.body).hashCode)
     val redacted =
       msg.body.split("""\s+""") // Split on whitespace
-        .map(word => 
+        .map(word =>
             // If random double is within probability for redacting,
             // redact this word.
             if (random.nextDouble < redactProb)

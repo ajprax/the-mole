@@ -92,8 +92,14 @@ object Server extends EchoApp {
         connection.foreach(msg => println("Raw from %s: %s".format(player, msg)))
       }
 
+      // Gambit system
+      val gambitModule = ServerModule.gambit()
+      val gambitInput = connections.mapValues(_.filter(_ matches GambitCommand.gambitRegex).map((_, cmd) => GambitCommand.deserialize(cmd)))
+      val (gambitMessages, gambitEffects): (Map[Player, Event[Message]], Behaviour[Seq[AppliedEffect[Any, Any]]]) = gambitModule(gambitInput)
+      val chatEffects = gambitEffects.map(effects => effects.collect{ case x: AppliedEffect[Message, Message] => x})
+
       // Chat system
-      val chatModule = ServerModule.chat(effects)
+      val chatModule = ServerModule.chat(gambitEffects)
       val chatInput = connections
           .mapValues(_.filter(_.isInstanceOf[Message]).map((_, msg) => msg.asInstanceOf[Message]))
       val chatOutput = chatModule(chatInput)
@@ -114,7 +120,7 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Allow server to send messages directly to players
-      val dmModule = ServerModule[Packet, Message] { sources =>
+      val dmModule: ServerModule[Packet, Message] { sources =>
         val playerNameMap = players.map(_.name).zip(players).toMap
 
         val dmMessages = Stdin.filter(_ matches dmRegex)
