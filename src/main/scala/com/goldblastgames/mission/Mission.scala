@@ -43,8 +43,8 @@ case class Mission(
     val lineOne = "Mission #%s:".format(day)
     val lineTwoA = if (primaryType == "AND") "and"
                    else if (primaryType == "OR") "or"
-                   else null
-    val lineTwoB = if (primaryType == "single") skills(1) else null
+                   else ""
+    val lineTwoB = if (primaryType == "single") "" else skills(1)
     val lineTwo = "Primary Objective requires: %s %s %s".format(skills(0), lineTwoA, lineTwoB)
     val lineThree = "  difficulty: exceed the enemy by: " + difficulty
     val lineFour = "  rewards: " + rewards(0)(0)
