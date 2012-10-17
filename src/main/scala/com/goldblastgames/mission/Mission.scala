@@ -48,7 +48,7 @@ case class Mission(
     val lineTwo = "Primary Objective requires: %s %s %s".format(skills(0), lineTwoA, lineTwoB)
     val lineThree = "  difficulty: exceed the enemy by: " + difficulty
     val lineFour = "  rewards: " + rewards(0)(0)
-    val lineFiveA = if (linked) " and completion of the Primary Objective" else null
+    val lineFiveA = if (linked) " and completion of the Primary Objective" else ""
     val lineFive = "Secondary Objective requires: " + skills(2) + lineFiveA
     val lineSix = if (opposed) "  difficulty: exceed the enemy by: " + difficulty else "  difficulty: exceed %s in total submissions".format((difficulty + 6))
     val lineSeven = "  rewards: " + rewards(0)(1)
