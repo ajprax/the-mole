@@ -6,12 +6,17 @@ object TheMoleBuild extends Build {
   lazy val theMole = Project(
     id = "the-mole",
     base = file(".")
-  ) aggregate(common, server, cli, web)
+  ) aggregate(echo, common, server, cli, web)
+
+  lazy val echo = Project(
+    id = "echo",
+    base = file("echo")
+  )
 
   lazy val common = Project(
     id = "the-mole-common",
     base = file("common")
-  )
+  ) dependsOn(echo)
 
   lazy val server = Project(
     id = "the-mole-server",
