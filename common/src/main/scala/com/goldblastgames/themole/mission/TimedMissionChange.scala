@@ -7,7 +7,7 @@ import com.github.oetzi.echo.core.EventSource
 
 
 class TimedMissionChange(period: Long) extends EventSource[Mission] {
-  val timer = new Timer() 
+  val timer = new Timer()
     class MissionTimerTask() extends TimerTask {
       override def run(): Unit = {
         // TODO(Issue-36): Generate new mission here instead of dummy mission
@@ -17,6 +17,6 @@ class TimedMissionChange(period: Long) extends EventSource[Mission] {
     }
 
     // Wait _period_ milliseconds before starting
-    timer.schedule(new MissionTimerTask(), period, period)  
+    timer.schedule(new MissionTimerTask(), 0, period)
 }
 
