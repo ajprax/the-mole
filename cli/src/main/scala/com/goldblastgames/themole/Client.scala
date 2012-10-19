@@ -24,14 +24,14 @@ object Client extends EchoApp {
   val deadDropRegex = """/deaddrop (.+)"""
   val deadDropMatcher = deadDropRegex.r
 
-  val submitRegex = """/submit (\w+) (\w+)"""
+  val submitRegex = """/submit (\w+) (\w+) (\w+)"""
   val submitMatcher = submitRegex.r
 
   def setup(args: Array[String]) {
 
     // Make sure the right arguments have been specified.
     require(
-      args.length == 2, 
+      args.length == 2,
       "Specify name and port as arguments"
     )
 
@@ -57,8 +57,8 @@ object Client extends EchoApp {
         .filter(in => in matches submitRegex)
         // Build a new Command.
         .map { (_, msg) =>
-          val submitMatcher(skill, amt) = msg
-          SubmitCommand(name, Skills.withName(skill), amt.toInt)
+          val submitMatcher(camp, skill, amt) = msg
+          SubmitCommand(name, Nation.withName(camp), Skills.withName(skill), amt.toInt)
         }
 
     // Handle deaddrops.
@@ -74,7 +74,7 @@ object Client extends EchoApp {
     val messages: Event[Packet] = Stdin
         .filter(in => !(in matches channelRegex) && !(in matches deadDropRegex) && !(in matches submitRegex))
         // Build a new Message.
-        .map { (_, msg) => 
+        .map { (_, msg) =>
           Message(name, dest.eval, msg)
         }
 

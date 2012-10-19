@@ -40,11 +40,11 @@ object ServerModule {
           case p @ Player(name, camp, allegiance) => {
             p -> {
               // Previous mission debriefing
-              val debriefing: Event[Message] = 
-                missionSource.map((_, mission) => 
+              val debriefing: Event[Message] =
+                missionSource.map((_, mission) =>
                   new Message(
-                    "Mission Report", 
-                    name, 
+                    "Mission Report",
+                    name,
                     skillTracker.prevResult.eval().toString
                   )
                 )

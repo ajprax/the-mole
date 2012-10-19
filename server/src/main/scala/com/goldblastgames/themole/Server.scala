@@ -114,11 +114,24 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Mission system
-      val missionModule = ServerModule.mission(new TimedMissionChange(14400000L * 6))
-      val missionInput = connections
-          .mapValues(_.filter(_.isInstanceOf[SubmitCommand]).map((_, msg) => msg.asInstanceOf[SubmitCommand]))
-      val missionOutput = missionModule(missionInput)
+      // TODO: fix the hack of having 2 modules
+      val missionModuleAmerica = ServerModule.mission(new TimedMissionChange(14400000L * 6))
+      val missionModuleUSSR = ServerModule.mission(new TimedMissionChange(14400000L * 6))
+      val missionInputAmerica = connections.
+          mapValues(_.filter(_.isInstanceOf[SubmitCommand])
+            .filter(_.asInstanceOf[SubmitCommand].camp == America)
+            .map((_, msg) => msg.asInstanceOf[SubmitCommand]))
+      val missionInputUSSR = connections
+          .mapValues(_.filter(_.isInstanceOf[SubmitCommand])
+            .filter(_.asInstanceOf[SubmitCommand].camp == USSR)
+            .map((_, msg) => msg.asInstanceOf[SubmitCommand]))
+      val missionOutputAmerica = missionModuleAmerica(missionInputAmerica)
+          .filter{case (player, _) => player.camp == America}
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
+      val missionOutputUSSR = missionModuleUSSR(missionInputUSSR)
+          .filter{case (player, _) => player.camp == USSR}
+          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
+      val missionOutput = join(missionOutputAmerica, missionOutputUSSR)
 
       // Dead-drop system
       val deadDropModule = ServerModule.deadDrop(14400000L)

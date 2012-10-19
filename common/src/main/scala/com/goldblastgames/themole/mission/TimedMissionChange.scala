@@ -17,6 +17,8 @@ class TimedMissionChange(period: Long) extends EventSource[Mission] {
     }
 
     // Wait _period_ milliseconds before starting
-    timer.schedule(new MissionTimerTask(), 0, period)
+    // TODO In the setup/initialization phase, start the timer
+    // Instead of having a 10 second delay
+    timer.schedule(new MissionTimerTask(), 1000L * 10, period)
 }
 
