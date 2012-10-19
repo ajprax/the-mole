@@ -12,7 +12,9 @@ import com.github.oetzi.echo.io.Sender
 import com.github.oetzi.echo.io.Stdin
 
 import com.goldblastgames.themole.chat.ChatEffect
+import com.goldblastgames.themole.gambits.AppliedEffect
 import com.goldblastgames.themole.io.DeadDrop
+import com.goldblastgames.themole.io.GambitCommand
 import com.goldblastgames.themole.io.Message
 import com.goldblastgames.themole.io.Packet
 import com.goldblastgames.themole.io.SubmitCommand
@@ -122,7 +124,7 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Allow server to send messages directly to players
-      val dmModule: ServerModule[Packet, Message] = { sources =>
+      val dmModule: ServerModule[Packet, Message] = ServerModule({ sources =>
         val playerNameMap = players.map(_.name).zip(players).toMap
 
         val dmMessages = Stdin.filter(_ matches dmRegex)
@@ -137,6 +139,7 @@ object Server extends EchoApp {
             .toMap
             .map { case (player, messages) => (player, messages.map((_, msg) => { println("Sending server message: %s".format(msg._2)); Message("server", player.name, msg._2) } )) }
       }
+    )
       val dmOutput = dmModule(Map())
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 

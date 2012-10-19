@@ -1,6 +1,6 @@
-package com.goldblastgames.gambits
+package com.goldblastgames.themole.gambits
 
-import com.goldblastgames.Player
+import com.goldblastgames.themole.Player
 
 case class AppliedEffect[-I,+O](
   targets: List[Player],

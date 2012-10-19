@@ -1,4 +1,4 @@
-package com.goldblastgames.io
+package com.goldblastgames.themole.io
 
 case class GambitCommand(gambitName: String)
 
