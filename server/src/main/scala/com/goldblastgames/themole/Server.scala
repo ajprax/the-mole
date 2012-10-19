@@ -3,12 +3,16 @@ package com.goldblastgames.themole
 import scalaz._
 import Scalaz._
 
+import shapeless.HNil
+import shapeless.Record._
+
 import com.github.oetzi.echo.EchoApp
 import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.Switcher
 import com.github.oetzi.echo.io.Stdin
 
+import com.goldblastgames.themole.conf._
 import com.goldblastgames.themole.chat.ChatEffect
 import com.goldblastgames.themole.io.DeadDrop
 import com.goldblastgames.themole.io.Message
@@ -68,20 +72,30 @@ object Server extends EchoApp {
         .foreach { case (_, enabled) => println("Anonymize: %s".format(if (enabled) "on" else "off")) }
 
     // TODO(Issue-16): This should be in configuration somewhere.
-    val port = 2552
-    val players = Seq(
-      Player("aaron", America, America),
-      Player("william", America, America),
-      Player("kane", America, USSR),
-      Player("clayton", USSR, USSR),
-      Player("daisy", USSR, USSR),
-      Player("franklin", USSR, America)
-    )
-    val effects = Seq[ChatEffect](
-      ChatEffect.redact(redactEnable, _ => true),
-      ChatEffect.shuffle(shuffleEnable, _ => true),
-      ChatEffect.anonymize(anonymizeEnable, _ => true)
-    )
+    // Build a settings object using shapeless' records in preparation
+    // for an actual game settings file existing.
+    val settings =
+      (portField    -> 2552) ::
+      (playersField -> Seq(
+            Player("aaron", America, America),
+            Player("william", America, America),
+            Player("kane", America, USSR),
+            Player("clayton", USSR, USSR),
+            Player("daisy", USSR, USSR),
+            Player("franklin", USSR, America)
+          )
+      ) ::
+      (effectsField -> Seq(
+            ChatEffect.redact(redactEnable, _ => true),
+            ChatEffect.shuffle(shuffleEnable, _ => true),
+            ChatEffect.anonymize(anonymizeEnable, _ => true)
+          )
+      ) ::
+      HNil
+
+    val port = settings.get(portField)
+    val players = settings.get(playersField)
+    val effects = settings.get(effectsField)
 
     print("Starting server on port %d...".format(port))
 
