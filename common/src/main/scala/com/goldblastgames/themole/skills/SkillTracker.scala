@@ -33,9 +33,9 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
         }
       }
     }.toMap
-  
+
   // Behaviours for totals of skills
-  val skillTotals: Map[Skill, Behaviour[Int]] = 
+  val skillTotals: Map[Skill, Behaviour[Int]] =
     submittedSkills.map{
       case (skill, submissions) => {
         skill -> {
@@ -50,6 +50,7 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
   def evaluateResult(mission: Mission): MissionResult = {
     // TODO evaluate missions correctly
     // new MissionResult(mission, mission.primaryObjective.primary.min <= skillTotals[mission.primaryObjective.primary.skill].eval(), None, None)
-    new MissionResult(mission, true, None, None, skillTotals.map(x => x._1.toString + x._2.eval.toString).reduce(_ + " " +  _))
+    new MissionResult(mission, true, None, None, skillTotals.map(x => x._1.toString + " " + x._2.eval.toString).reduce(_ + " " +  _))
   }
 }
+

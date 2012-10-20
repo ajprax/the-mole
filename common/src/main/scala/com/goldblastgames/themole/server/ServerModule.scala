@@ -45,7 +45,7 @@ object ServerModule {
                   new Message(
                     "Mission Report",
                     name,
-                    skillTracker.prevResult.eval().toString
+                    skillTracker.prevResult.eval().humanString
                   )
                 )
 

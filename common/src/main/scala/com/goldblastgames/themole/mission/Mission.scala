@@ -83,7 +83,11 @@ case class MissionResult(
   level1: Option[Debriefing1],
   level2: Option[Debriefing2],
   body: String
-)
+) {
+  def humanString(): String = {
+    "\n%s \nSubmitted Skills \n%s".format(mission, body)
+  }
+}
 
 // TODO: Actual mission debriefing detail.
 case class Debriefing1(
