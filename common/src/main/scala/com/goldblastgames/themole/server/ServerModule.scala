@@ -204,7 +204,10 @@ object ServerModule {
 
   // Gambit module to handle submission of gambit commands and responses.
   // Enables and disables, and sets targets of effects. (TODO)
-  def gambit(): Map[Player, Event[GambitCommand]] => (Map[Player, Event[Message]], Behaviour[Seq[AppliedEffect[Any, Any]]]) = {
+  // The return value is a map from player -> event [message] (confirmation messages)
+  // and a behaviour of a effects split up by types so the server module can use them
+  // Currently the only type of effect is [Message, Message] (chat effects)
+  def gambit(): Map[Player, Event[GambitCommand]] => (Map[Player, Event[Message]], Behaviour[(Seq[AppliedEffect[Message, Message]])]) = {
     sources: Map[Player, Event[GambitCommand]] => {
         "blope"
         val sinks: Map[Player, Event[Message]] =
@@ -217,7 +220,7 @@ object ServerModule {
           }
         // This is the first half of the tuple:
         // TODO second half of the tuple for real
-        (sinks, Behaviour[Seq[AppliedEffect[Any, Any]]](t => Seq()))
+        (sinks, Behaviour[(Seq[AppliedEffect[Message, Message]])](t => Seq()))
       }
   }
 }

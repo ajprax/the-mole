@@ -99,8 +99,8 @@ object Server extends EchoApp {
       // Gambit system
       val gambitModule = ServerModule.gambit()
       val gambitInput = connections.mapValues(_.filter(_.isInstanceOf[GambitCommand]).map((_, cmd) => cmd.asInstanceOf[GambitCommand]))
-      val (gambitMessages, gambitEffects): (Map[Player, Event[Message]], Behaviour[Seq[AppliedEffect[Any, Any]]]) = gambitModule(gambitInput)
-      val chatEffects: Behaviour[Seq[AppliedEffect[Message,Message]]] = gambitEffects.map(effects => effects.collect{ case x => x.asInstanceOf[AppliedEffect[Message, Message]]})
+      val (gambitMessages, gambitEffects): (Map[Player, Event[Message]], Behaviour[Seq[AppliedEffect[Message, Message]]]) = gambitModule(gambitInput)
+      val chatEffects: Behaviour[Seq[AppliedEffect[Message,Message]]] = gambitEffects.map(effects => effects) // once we have more effects, select the right one.
 
       // Chat system
       val chatModule = ServerModule.chat(chatEffects)
