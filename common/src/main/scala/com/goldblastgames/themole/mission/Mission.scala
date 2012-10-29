@@ -91,7 +91,7 @@ case class MissionResult(
 
 // TODO: Actual mission debriefing detail.
 case class Debriefing1(
-  margins: Map[MissionObjective, Int] 
+  margins: Map[MissionObjective, Int]
 )
 
 case class Debriefing2(
@@ -99,13 +99,14 @@ case class Debriefing2(
 )
 
 object Mission {
-  // TODO(Issue-36): actually generate missions
 
-  def nextMission = new AaronGenerator(1).next // 1 should be repalced with a day tracking behavior
+  def nextMission = new (AaronGenerator).next
+
 }
 
-class AaronGenerator(day: Int) {
+class AaronGenerator {
   import scala.util.Random
+  private var day: Int = 0
   val random = new Random()
   def getDifficulty = {
     val baseDifficulty = if (day < 10) (day / 2).toInt else 5 // slowly increment difficulty
@@ -186,6 +187,8 @@ class AaronGenerator(day: Int) {
     }
   def allInOne =
     List(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
-  def next =
+  def next = {
+    day += 1
     new Mission(day, getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
+  }
 }
