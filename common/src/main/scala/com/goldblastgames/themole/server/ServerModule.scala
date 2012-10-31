@@ -187,8 +187,6 @@ object ServerModule {
           val appliedEffects = effects.filter(_.select(p))
           val channelSinks = allChannel merge campChannels(nation) merge playerChannels(p)
 
-          channelSinks.foreach(msg => println("[%s %s]".format(name, msg)))
-
           // TODO: Use these timestamps.
           p -> channelSinks.map((_, msg) => appliedEffects.foldLeft(msg)((x, f) => f(x)))
         }
