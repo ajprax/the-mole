@@ -52,8 +52,7 @@ object Server extends EchoApp {
           val end = begin + duration.toDouble
 
           println("Enabling %s effect on player %s for %f".format(effect, player, duration.toDouble))
-
-          (effect, Behaviour(t => { println("Checking %s's enable status. %f < %f < %f".format(effect, begin, t, end)); begin < t && t < end } ))
+          (effect, Behaviour(t => begin < t && t < end))
         }
     val redactEnable = effectEnable(effectEnables, "redact")
     val shuffleEnable = effectEnable(effectEnables, "shuffle")
@@ -74,17 +73,12 @@ object Server extends EchoApp {
     // TODO(Issue-16): This should be in configuration somewhere.
     // Build a settings object using shapeless' records in preparation
     // for an actual game settings file existing.
+    val game = readXml()
     val settings =
-      (portField    -> 2552) ::
-      (playersField -> Seq(
-            Player("aaron", America, America),
-            Player("william", America, America),
-            Player("kane", America, USSR),
-            Player("clayton", USSR, USSR),
-            Player("daisy", USSR, USSR),
-            Player("franklin", USSR, America)
-          )
-      ) ::
+      readPort(game \ "port") ::
+      readPlayers(game \ "players") ::
+      readDropFreq(game \ "session" \ "dropFreq") ::
+      readMissionFreq(game \ "session" \ "missionFreq") ::
       (effectsField -> Seq(
             ChatEffect.redact(redactEnable, _ => true),
             ChatEffect.shuffle(shuffleEnable, _ => true),
@@ -96,6 +90,8 @@ object Server extends EchoApp {
     val port = settings.get(portField)
     val players = settings.get(playersField)
     val effects = settings.get(effectsField)
+    val dropFreq = settings.get(dropFreqField)
+    val missionFreq = settings.get(missionFreqField)
 
     print("Starting server on port %d...".format(port))
 
@@ -115,8 +111,8 @@ object Server extends EchoApp {
 
       // Mission system
       // TODO: fix the hack of having 2 modules
-      val missionModuleAmerica = ServerModule.mission(new TimedMissionChange(14400000L * 6))
-      val missionModuleUSSR = ServerModule.mission(new TimedMissionChange(14400000L * 6))
+      val missionModuleAmerica = ServerModule.mission(new TimedMissionChange(missionFreq))
+      val missionModuleUSSR = ServerModule.mission(new TimedMissionChange(missionFreq))
       val missionInputAmerica = connections.
           mapValues(_.filter(_.isInstanceOf[SubmitCommand])
             .filter(_.asInstanceOf[SubmitCommand].camp == America)
@@ -134,7 +130,7 @@ object Server extends EchoApp {
       val missionOutput = join(missionOutputAmerica, missionOutputUSSR)
 
       // Dead-drop system
-      val deadDropModule = ServerModule.deadDrop(14400000L)
+      val deadDropModule = ServerModule.deadDrop(dropFreq)
       val deadDropInput = connections
           .mapValues(_.filter(_.isInstanceOf[DeadDrop]).map((_, msg) => msg.asInstanceOf[DeadDrop]))
       val deadDropOutput = deadDropModule(deadDropInput)
@@ -160,7 +156,14 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Join all the resulting streams and output them.
-      join(chatOutput, missionOutput, deadDropOutput, dmOutput)
+      val output = join(chatOutput, missionOutput, deadDropOutput, dmOutput)
+      
+      // Log the raw output.
+      output.foreach { case (player, connection) =>
+        connection.foreach(msg => println("Raw to %s: %s".format(player, msg)))
+      }
+
+      output
     }
 
     println("Server started!")
