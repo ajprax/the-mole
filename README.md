@@ -25,6 +25,7 @@ sbt proguard
 
 ## Game settings file:
 
+```xml
 <!--
      This is an example game configuration file for GoldBlastGame's 'The Mole'.
   -->
@@ -126,3 +127,4 @@ sbt proguard
     <missionFreq>86400000</missionFreq>
   </session>
 </game>
+```
