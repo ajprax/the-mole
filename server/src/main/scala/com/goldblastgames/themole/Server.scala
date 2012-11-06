@@ -125,23 +125,23 @@ object Server extends EchoApp {
 
       // Mission system
       // TODO: fix the hack of having 2 modules
-      val missionModuleAmerica = ServerModule.mission(new TimedMissionChange(missionFreq))
-      val missionModuleUSSR = ServerModule.mission(new TimedMissionChange(missionFreq))
-      val missionInputAmerica = connections.
-          mapValues(_.filter(_.isInstanceOf[SubmitCommand])
-            .filter(_.asInstanceOf[SubmitCommand].camp == America)
-            .map((_, msg) => msg.asInstanceOf[SubmitCommand]))
-      val missionInputUSSR = connections
-          .mapValues(_.filter(_.isInstanceOf[SubmitCommand])
-            .filter(_.asInstanceOf[SubmitCommand].camp == USSR)
-            .map((_, msg) => msg.asInstanceOf[SubmitCommand]))
-      val missionOutputAmerica = missionModuleAmerica(missionInputAmerica)
-          .filter{case (player, _) => player.camp == America}
-          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
-      val missionOutputUSSR = missionModuleUSSR(missionInputUSSR)
-          .filter{case (player, _) => player.camp == USSR}
-          .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
-      val missionOutput = join(missionOutputAmerica, missionOutputUSSR)
+      /* val missionModuleAmerica = ServerModule.mission(new TimedMissionChange(missionFreq)) */
+      /* val missionModuleUSSR = ServerModule.mission(new TimedMissionChange(missionFreq)) */
+      /* val missionInputAmerica = connections. */
+      /*     mapValues(_.filter(_.isInstanceOf[SubmitCommand]) */
+      /*       .filter(_.asInstanceOf[SubmitCommand].camp == America) */
+      /*       .map((_, msg) => msg.asInstanceOf[SubmitCommand])) */
+      /* val missionInputUSSR = connections */
+      /*     .mapValues(_.filter(_.isInstanceOf[SubmitCommand]) */
+      /*       .filter(_.asInstanceOf[SubmitCommand].camp == USSR) */
+      /*       .map((_, msg) => msg.asInstanceOf[SubmitCommand])) */
+      /* val missionOutputAmerica = missionModuleAmerica(missionInputAmerica) */
+      /*     .filter{case (player, _) => player.camp == America} */
+      /*     .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet])) */
+      /* val missionOutputUSSR = missionModuleUSSR(missionInputUSSR) */
+      /*     .filter{case (player, _) => player.camp == USSR} */
+      /*     .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet])) */
+      /* val missionOutput = join(missionOutputAmerica, missionOutputUSSR) */
 
       // Dead-drop system
       val deadDropModule = ServerModule.deadDrop(dropFreq)
@@ -170,7 +170,8 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Join all the resulting streams and output them.
-      val output = join(chatOutput, missionOutput, deadDropOutput, dmOutput)
+      /* val output = join(chatOutput, missionOutput, deadDropOutput, dmOutput) */
+      val output = join(chatOutput, deadDropOutput, dmOutput)
       
       // Log the raw output.
       output.foreach { case (player, connection) =>
