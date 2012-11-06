@@ -29,48 +29,21 @@ object Server extends EchoApp {
   val effectRegex = """/effect (\w+) (.+) (\d*\.?\d+)"""
   val effectMatcher = effectRegex.r
 
-  def effectEnable(enables: Event[(String, Behaviour[Boolean])], effect: String): Behaviour[Boolean] = {
+  def effectEnable(enables: Event[(String, String, Behaviour[Boolean])], effect: String, player: String): Behaviour[Boolean] = {
     val filtered = enables
-        .filter({ case (name, _) => effect == name })
-        .map((_, x) => x._2)
+        .filter({ case (effectName, playerName, _) => effect == effectName && player == playerName })
+        .map((_, x) => x._3)
 
     Switcher(Behaviour(_ => false), filtered)
   }
 
-  val statusRegex = """/status *"""
+  val statusRegex = """/status (\S+)"""
   val statusMatcher = statusRegex.r
 
   val dmRegex = """/say (\S+) (.*)"""
   val dmMatcher = dmRegex.r
 
   def setup(args: Array[String]) {
-    // Setup server console.
-    // Handle effect enables
-    val effectEnables = Stdin.filter(_ matches effectRegex)
-        .map { (begin, command) =>
-          val effectMatcher(effect, player, duration) = command
-          val end = begin + duration.toDouble
-          val nanoSeconds = duration.toDouble * 1000000000
-
-          println("Enabling %s effect on player %s for %f".format(effect, player, nanoSeconds))
-          (effect, Behaviour(t => begin < t && t < end))
-        }
-    val redactEnable = effectEnable(effectEnables, "redact")
-    val shuffleEnable = effectEnable(effectEnables, "shuffle")
-    val anonymizeEnable = effectEnable(effectEnables, "anonymize")
-
-    // Handle status queries.
-    val statusEvent = Stdin.filter(_ matches statusRegex)
-    redactEnable
-        .sample(statusEvent)
-        .foreach { case (_, enabled) => println("Redaction: %s".format(if (enabled) "on" else "off")) }
-    shuffleEnable
-        .sample(statusEvent)
-        .foreach { case (_, enabled) => println("Shuffle: %s".format(if (enabled) "on" else "off")) }
-    anonymizeEnable
-        .sample(statusEvent)
-        .foreach { case (_, enabled) => println("Anonymize: %s".format(if (enabled) "on" else "off")) }
-
     // TODO(Issue-16): This should be in configuration somewhere.
     // Build a settings object using shapeless' records in preparation
     // for an actual game settings file existing.
@@ -80,19 +53,59 @@ object Server extends EchoApp {
       readPlayers(game \ "players") ::
       readDropFreq(game \ "session" \ "dropFreq") ::
       readMissionFreq(game \ "session" \ "missionFreq") ::
-      (effectsField -> Seq(
-            ChatEffect.redact(redactEnable, _ => true),
-            ChatEffect.shuffle(shuffleEnable, _ => true),
-            ChatEffect.anonymize(anonymizeEnable, _ => true)
-          )
-      ) ::
       HNil
 
     val port = settings.get(portField)
     val players = settings.get(playersField)
-    val effects = settings.get(effectsField)
     val dropFreq = settings.get(dropFreqField)
     val missionFreq = settings.get(missionFreqField)
+
+    // Setup server console.
+    // Handle effect enables
+    val effectEnables = Stdin.filter(_ matches effectRegex)
+        .map { (begin, command) =>
+          val effectMatcher(effect, player, duration) = command
+          val nanoSeconds = duration.toDouble * 1000000000
+          val end = begin + nanoSeconds
+
+          println("Enabling %s effect on player %s for %f".format(effect, player, nanoSeconds))
+          (effect, player, Behaviour(t => begin < t && t < end ))
+        }
+    val redactEnable = players
+        .map(player => (player, effectEnable(effectEnables, "redact", player.name)))
+        .toMap
+    val shuffleEnable = players
+        .map(player => (player, effectEnable(effectEnables, "shuffle", player.name)))
+        .toMap
+    val anonymizeEnable = players
+        .map(player => (player, effectEnable(effectEnables, "anonymize", player.name)))
+        .toMap
+
+    // Handle status queries.
+    val statusEvent = Stdin.filter(_ matches statusRegex)
+    players.map { player =>
+      val redactEvents = statusEvent.filter { case statusMatcher(player.name) => true; case _ => false }
+      redactEnable(player)
+          .sample(redactEvents)
+          .foreach { case (_, enabled) => println("Redaction: %s".format(if (enabled) "on" else "off")) }
+    }
+    players.map { player =>
+      val shuffleEvents = statusEvent.filter { case statusMatcher(player.name) => true; case _ => false }
+      shuffleEnable(player)
+          .sample(shuffleEvents)
+          .foreach { case (_, enabled) => println("Shuffle: %s".format(if (enabled) "on" else "off")) }
+    }
+    players.map { player =>
+      val anonymizeEvents = statusEvent.filter { case statusMatcher(player.name) => true; case _ => false }
+      anonymizeEnable(player)
+          .sample(anonymizeEvents)
+          .foreach { case (_, enabled) => println("Anonymize: %s".format(if (enabled) "on" else "off")) }
+    }
+
+    val effects =
+        players.map(player => ChatEffect.redact(redactEnable(player), _ == player)).toSeq ++
+        players.map(player => ChatEffect.shuffle(shuffleEnable(player), _ == player)).toSeq ++
+        players.map(player => ChatEffect.anonymize(anonymizeEnable(player), _ == player)).toSeq
 
     print("Starting server on port %d...".format(port))
 
