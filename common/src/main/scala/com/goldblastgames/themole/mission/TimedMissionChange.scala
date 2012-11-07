@@ -10,9 +10,10 @@ class TimedMissionChange(period: Long) extends EventSource[Mission] {
   val timer = new Timer()
     class MissionTimerTask() extends TimerTask {
       override def run(): Unit = {
-        // TODO(Issue-36): Generate new mission here instead of dummy mission
-        val mission = Mission.nextMission
-        occur(mission)
+        val americanMission = Mission.nextMission._1
+        val sovietMission = Mission.nextMission._2
+        occur(americanMission)
+        occur(sovietMission)
       }
     }
 
