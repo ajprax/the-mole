@@ -50,8 +50,9 @@ object Server extends EchoApp {
         .map { (begin, command) =>
           val effectMatcher(effect, player, duration) = command
           val end = begin + duration.toDouble
+          val nanoSeconds = duration.toDouble * 1000000000
 
-          println("Enabling %s effect on player %s for %f".format(effect, player, duration.toDouble))
+          println("Enabling %s effect on player %s for %f".format(effect, player, nanoSeconds))
           (effect, Behaviour(t => begin < t && t < end))
         }
     val redactEnable = effectEnable(effectEnables, "redact")
