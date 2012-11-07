@@ -30,6 +30,7 @@ case class MissionObjective(
 }
 
 case class Mission(
+  camp: Nation,
   day: Int,
   difficulty: Int,
   linked: Boolean,
@@ -99,8 +100,9 @@ case class Debriefing2(
 )
 
 object Mission {
-
-  def nextMission = new (AaronGenerator).next
+  
+  val generator = new AaronGenerator
+  def nextMission = generator.next
 
 }
 
@@ -189,6 +191,7 @@ class AaronGenerator {
     List(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
   def next = {
     day += 1
-    new Mission(day, getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
+    (new Mission(America, day, getDifficulty, linked, opposed, primaryType, getSkills, getRewards),
+    new Mission(USSR, day, getDifficulty, linked, opposed, primaryType, getSkills, getRewards))
   }
 }
