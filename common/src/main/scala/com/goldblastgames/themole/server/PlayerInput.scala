@@ -14,7 +14,7 @@ class PlayerInput(
   val connect: Event[ObjectInputStream]
 ) extends EventSource[Packet] {
 
-  connect.foreach { case in =>
+  connect.foreach { in: ObjectInputStream =>
 
     val thread = new Thread(new Runnable() {
       def run() {

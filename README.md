@@ -2,6 +2,17 @@
 
 This project makes use of the echo library: https://github.com/oetzi/echo
 
+## Setup
+
+```bash
+wget http://apt.typesafe.com/repo-deb-build-0002.deb
+sudo dpkg -I repo-deb-build-0002.deb
+sudo apt-get update && sudo apt-get install git sbt scala
+git clone --recursive git@github.com:robotoer/the-mole.git
+cd the-mole
+sbt compile
+```
+
 ## To build & run the game's components:
 
 ```bash
