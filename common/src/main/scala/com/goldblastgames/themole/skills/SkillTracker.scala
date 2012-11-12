@@ -17,17 +17,24 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
   val zero: Behaviour[Int] = new Constant(0)
 
   // Behaviours for each skill of each player
-  val submittedSkills: Map[Skill, Map[Player, Behaviour[Int]]] =
-    Skills.values.map {
-      case skill => {
-        skill -> {
-          sources.map{
-            case (player, event) => {
-              val filteredSubmissionAmount: Event[Int] = event
-                .filter(submit => submit.skill == skill)
-                .map((t, submission) => submission.amount)
+  val submittedSkills: Map[Nation, Map[Skill, Map[Player, Behaviour[Int]]]] =
+    Nation.values.map {
+      case nation => {
+        nation -> {
+          Skills.values.map {
+            case skill => {
+              skill -> {
+                sources.map{
+                  case (player, event) => {
+                    val filteredSubmissionAmount: Event[Int] = event
+                      .filter(submit => submit.camp == nation)
+                      .filter(submit => submit.skill == skill)
+                      .map((t, submission) => submission.amount)
 
-              player -> new Stepper[Int](0, filteredSubmissionAmount)
+                    player -> new Stepper[Int](0, filteredSubmissionAmount)
+                  }
+                }
+              }
             }
           }
         }
