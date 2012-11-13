@@ -8,6 +8,7 @@ import com.github.oetzi.echo.core.Stepper
 import com.goldblastgames.themole.io.SubmitCommand
 import com.goldblastgames.themole.Player
 import com.goldblastgames.themole.mission._
+import com.goldblastgames.themole.Nation
 import com.goldblastgames.themole.Nation._
 import com.goldblastgames.themole.skills.Skills._
 
@@ -36,17 +37,23 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
                 }
               }
             }
-          }
+          }.toMap
         }
       }
     }.toMap
 
   // Behaviours for totals of skills
-  val skillTotals: Map[Skill, Behaviour[Int]] =
+  val skillTotals: Map[Nation, Map[Skill, Behaviour[Int]]] =
     submittedSkills.map{
-      case (skill, submissions) => {
-        skill -> {
-          submissions.values.foldLeft(zero)(_.map2(_)((x, y) => x + y))
+      case (camp, skillsToSubs) => {
+        camp -> {
+          skillsToSubs.map {
+            case (skill, submissions) => {
+              skill -> {
+                submissions.values.foldLeft(zero)(_.map2(_)((x, y) => x + y))
+              }
+            }
+          }
         }
       }
     }
