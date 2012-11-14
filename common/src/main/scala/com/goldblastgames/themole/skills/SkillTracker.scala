@@ -43,8 +43,9 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
     }.toMap
 
   // Behaviours for totals of skills
-  val skillTotals: Map[Nation, Map[Skill, Behaviour[Int]]] =
-    submittedSkills.map{
+  // Separated by mission
+  val totalsBySkill: Map[Nation, Map[Skill, Behaviour[Int]]] =
+    submittedSkills.map {
       case (camp, skillsToSubs) => {
         camp -> {
           skillsToSubs.map {
@@ -58,6 +59,24 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
       }
     }
 
+  // Behaviours for totals submissions by player
+  // Not separated by missoin
+  val totalsByPlayer: Map[Player, Behaviour[Int]] =
+    sources.map {
+      case (player, event) => {
+        player -> {
+          val submissionsList = for {
+            camp <- submittedSkills.keys
+            skill <- submittedSkills(camp).keys
+            submitter <- submittedSkills(camp)(skill).keys
+            if (submitter == player) 
+            } yield submittedSkills(camp)(skill)(submitter)
+          submissionsList.foldLeft(zero)(_.map2(_)((x, y) => x + y))
+        }
+      }
+    }
+
+/*
   // Result depends on previous mission's skill requirements and the totals behaviours
   val prevResult: Behaviour[MissionResult] = missionTracker.prevMission.map(evaluateResult(_))
 
@@ -66,5 +85,7 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
     // new MissionResult(mission, mission.primaryObjective.primary.min <= skillTotals[mission.primaryObjective.primary.skill].eval(), None, None)
     new MissionResult(mission, true, None, None, skillTotals.map(x => x._1.toString + " " + x._2.eval.toString).reduce(_ + " " +  _))
   }
+
+*/
 }
 
