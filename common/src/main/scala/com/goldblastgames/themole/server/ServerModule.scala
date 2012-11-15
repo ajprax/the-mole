@@ -41,12 +41,16 @@ object ServerModule {
             p -> {
               // Previous mission debriefing
               val debriefing: Event[Message] =
-                missionSource.map((_, mission) =>
+                missionSource.map((_, missions) => {
+                  val messageBody =
+                    if (camp == America) skillTracker.prevResults.eval()._1.humanString
+                    else skillTracker.prevResults.eval()._2.humanString
                   new Message(
                     "Mission Report",
                     name,
-                    skillTracker.prevResult.eval().humanString
-                  )
+                    messageBody
+                    )
+                  }
                 )
 
               // New mission notifications
