@@ -76,16 +76,16 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
       }
     }
 
-/*
-  // Result depends on previous mission's skill requirements and the totals behaviours
-  val prevResult: Behaviour[MissionResult] = missionTracker.prevMission.map(evaluateResult(_))
 
-  def evaluateResult(mission: Mission): MissionResult = {
+  // Result depends on previous mission's skill requirements and the totals behaviours
+  val prevResults: Behaviour[Tuple2[MissionResult, MissionResult]] = missionTracker.prevMissions.map(evaluateResult(_))
+
+  def evaluateResult(missions: Tuple2[Mission, Mission]): Tuple2[MissionResult, MissionResult] = {
     // TODO evaluate missions correctly
     // new MissionResult(mission, mission.primaryObjective.primary.min <= skillTotals[mission.primaryObjective.primary.skill].eval(), None, None)
-    new MissionResult(mission, true, None, None, skillTotals.map(x => x._1.toString + " " + x._2.eval.toString).reduce(_ + " " +  _))
-  }
+    (new MissionResult(missions._1, true, None, None, "dummy body America"),
+    new MissionResult(missions._2, true, None, None, "dummy body USSR"))  }
 
-*/
+
 }
 

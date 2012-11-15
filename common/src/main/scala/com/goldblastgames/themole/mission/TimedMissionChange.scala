@@ -6,13 +6,12 @@ import java.util.TimerTask
 import com.github.oetzi.echo.core.EventSource
 
 
-class TimedMissionChange(period: Long) extends EventSource[Mission] {
+class TimedMissionChange(period: Long) extends EventSource[Tuple2[Mission, Mission]] {
   val timer = new Timer()
     class MissionTimerTask() extends TimerTask {
       override def run(): Unit = {
-        val (americanMission, sovietMission) = Mission.nextMission
-        occur(americanMission)
-        occur(sovietMission)
+        val missions = Mission.nextMission
+        occur(missions)
       }
     }
 
