@@ -11,6 +11,8 @@ import com.goldblastgames.themole.mission._
 import com.goldblastgames.themole.Nation
 import com.goldblastgames.themole.Nation._
 import com.goldblastgames.themole.skills.Skills._
+import com.goldblastgames.themole.mission.MissionResult._
+import com.goldblastgames.themole.mission.MissionResult
 
 class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: MissionTracker) {
 
@@ -83,8 +85,39 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
   def evaluateResult(missions: Tuple2[Mission, Mission]): Tuple2[MissionResult, MissionResult] = {
     // TODO evaluate missions correctly
     // new MissionResult(mission, mission.primaryObjective.primary.min <= skillTotals[mission.primaryObjective.primary.skill].eval(), None, None)
-    (new MissionResult(missions._1, true, None, None, "dummy body America"),
-    new MissionResult(missions._2, true, None, None, "dummy body USSR"))  }
+
+    def sum(skills: List[Skill]): Int = {
+      val submissionsList = for {
+        submittedSkill <- skills
+        camp <- submittedSkills.keys
+        skill <- submittedSkills(camp).keys
+        submitter <- submittedSkills(camp)(skill).keys
+        if (submittedSkill == skill)
+        } yield submittedSkills(camp)(skill)(submitter).eval
+      submissionsList.reduce(_ + _)
+      }
+    def decompose(mission: Mission): MissionResult = {
+      mission match {
+        case Mission(camp, day, primaryObjective, secondaryObjective) => {
+          val primary = primaryObjective match {
+            case PrimaryObjective(skills, difficulty, andOrSingle, rewards) =>
+              difficulty < (sum(primaryObjective.positiveSkills) - sum(primaryObjective.negativeSkills))
+            }
+          val secondary = secondaryObjective match {
+            case SecondaryObjective(skills, difficulty, linked, opposed, rewards) => {
+              if (linked && opposed) primary && (difficulty < (sum(secondaryObjective.positiveSkills) - sum(secondaryObjective.negativeSkills)))
+              else if (linked && !opposed) primary && (difficulty < (sum(secondaryObjective.positiveSkills) - 6))
+              else if (!linked && opposed) (difficulty < (sum(secondaryObjective.positiveSkills) - sum(secondaryObjective.negativeSkills)))
+              else difficulty < (sum(secondaryObjective.positiveSkills) - 6)
+              }
+            }
+            (primary, secondary)
+          }
+        }
+      }
+
+    (decompose(missions._1), decompose(missions._2))
+  }
 
 
 }
