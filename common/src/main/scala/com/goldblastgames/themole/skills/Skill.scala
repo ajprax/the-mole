@@ -8,4 +8,12 @@ object Skills extends Enumeration {
     Sabotage,
     Sexitude,
     Stoicism = Value
+  val skillPairs: Map[Skill, Skill] = Map(
+    Subterfuge -> InformationGathering,
+    InformationGathering -> Subterfuge,
+    Wetwork -> Sabotage,
+    Sabotage -> Wetwork,
+    Sexitude -> Stoicism,
+    Stoicism -> Sexitude
+    )
 }

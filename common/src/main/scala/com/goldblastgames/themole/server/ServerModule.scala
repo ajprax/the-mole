@@ -43,8 +43,8 @@ object ServerModule {
               val debriefing: Event[Message] =
                 missionSource.map((_, missions) => {
                   val messageBody =
-                    if (camp == America) skillTracker.prevResults.eval()._1.humanString
-                    else skillTracker.prevResults.eval()._2.humanString
+                    if (camp == America) skillTracker.prevResults.eval()._1.toString
+                    else skillTracker.prevResults.eval()._2.toString
                   new Message(
                     "Mission Report",
                     name,
