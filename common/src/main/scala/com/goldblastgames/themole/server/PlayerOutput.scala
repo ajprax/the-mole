@@ -1,22 +1,23 @@
 package com.goldblastgames.themole.server
 
-import java.io.ObjectOutputStream
+import java.io.DataOutputStream
 
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.Behaviour
 
 import com.goldblastgames.themole.io.Packet
+import com.goldblastgames.themole.io.PacketSerialization._
 
 class PlayerOutput(
   val name: String,
-  val connect: Event[ObjectOutputStream],
+  val connect: Event[DataOutputStream],
   val output: Event[Packet]
 ) {
 
   // Store incoming outputStreams.
-  val outputStreams: Behaviour[Seq[ObjectOutputStream]] = {
-    val init: Seq[ObjectOutputStream] = Seq()
-    def combine(outs: Seq[ObjectOutputStream], out: ObjectOutputStream) = outs ++ Seq(out)
+  val outputStreams: Behaviour[Seq[DataOutputStream]] = {
+    val init: Seq[DataOutputStream] = Seq()
+    def combine(outs: Seq[DataOutputStream], out: DataOutputStream) = outs ++ Seq(out)
     
     connect.foldLeft(init)(combine)
   }
@@ -26,7 +27,7 @@ class PlayerOutput(
       .foreach { case (packet, outs) =>
         outs.foreach { out =>
           try {
-            out.writeObject(packet)
+            out.writeUTF(serialize(packet))
             out.flush()
           } catch {
             case _ =>
@@ -46,7 +47,7 @@ class PlayerOutput(
   history.sample(connect)
       .foreach { case (out, hist) =>
         hist.foreach { msg =>
-          out.writeObject(msg)
+          out.writeUTF(serialize(msg))
           out.flush()
         }
       }
