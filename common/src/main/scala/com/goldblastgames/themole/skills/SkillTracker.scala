@@ -20,6 +20,16 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
   // A behaviour[int] that is always zero
   val zero: Behaviour[Int] = new Constant(0)
 
+  // Dummy behaviours for debriefing level
+  val one: Behaviour[Int] = new Constant(1)
+  val debriefingLevels: Map[Player, Behaviour[Int]] = {
+    sources.keys.map {
+      case player => {
+        player -> one
+        }
+      }.toMap
+    }
+
   // Behaviours for each skill of each player
   val submittedSkills: Map[Nation, Map[Skill, Map[Player, Behaviour[Int]]]] =
     Nation.values.map {
@@ -74,7 +84,7 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
             camp <- submittedSkills.keys
             skill <- submittedSkills(camp).keys
             submitter <- submittedSkills(camp)(skill).keys
-            if (submitter == player) 
+            if (submitter == player)
             } yield submittedSkills(camp)(skill)(submitter)
           submissionsList.foldLeft(zero)(_.map2(_)((x, y) => x + y))
         }
@@ -128,11 +138,11 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
       } yield submittedSkills(camp)(skill)(submitter).eval
     submissionsList.reduce(_ + _)
     }
- 
 
   def evaluateResult(missions: Tuple2[Mission, Mission]): Tuple2[MissionResult, MissionResult] = {
 
     def singleMission(mission: Mission): MissionResult = {
+      if (mission == null) (true, true) else {
       val primaryObjective = mission.primaryObjective
       val secondaryObjective = mission.secondaryObjective
       val margins = findMargins(mission)
@@ -144,7 +154,7 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
         else if (!secondaryObjective.linked && secondaryObjective.opposed) secondaryObjective.difficulty < margins._2
         else secondaryObjective.difficulty < (sum(mission.camp, secondaryObjective.positiveSkills) - 6)
         }
-      (primary, secondary)
+      (primary, secondary)}
       }
     (singleMission(missions._1), singleMission(missions._2))
   }
@@ -152,13 +162,16 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
   val prevDebriefings: Behaviour[Tuple2[List[MissionDebriefing], List[MissionDebriefing]]] = missionTracker.prevMissions.map(getDebriefings(_))
 
   def getDebriefings(missions: Tuple2[Mission, Mission]) = {
-    def singleCamp(mission: Mission): List[MissionDebriefing] = List(
+    def singleCamp(mission: Mission): List[MissionDebriefing] = {
+      if (mission == null) List(new DebriefingDummy, new DebriefingDummy)
+      else List(
       new DebriefingLevelOne(mission.camp, mission.day, findMargins(mission)._1, findMargins(mission)._2),
       new DebriefingLevelTwo(mission.camp, totalsBySkill),
       new DebriefingLevelThree(mission.camp, totalsByPlayer),
       new DebriefingLevelFour(mission.camp, totalsBySkillByCamp),
       new DebriefingLevelFive(mission.camp, submittedSkills)
       )
+      }
     (singleCamp(missions._1), singleCamp(missions._2))
   }
 

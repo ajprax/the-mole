@@ -11,11 +11,11 @@ class MissionTracker(missionChange: TimedMissionChange) {
 
   val nullTuple = (null: Mission, null: Mission)
   // Behaviour valued at the previous mission pair using the sliding tuple
-  val prevMissions: Behaviour[Tuple2[Mission, Mission]] =
+  val prevMissions: Behaviour[Tuple2[Mission, Mission]] = {
     missionChange
       .foldLeft((nullTuple, nullTuple))((prev: Tuple2[Tuple2[Mission, Mission], Tuple2[Mission, Mission]], curr: Tuple2[Mission, Mission]) => (prev._2, curr))
           .map(tup => tup._1)
-
+        }
 /*
         (((null: Mission, null: Mission), (null: Mission, null: Mission)))
         ((prev: ((Mission, Mission), (Mission, Mission)), curr: (Mission, Mission))
