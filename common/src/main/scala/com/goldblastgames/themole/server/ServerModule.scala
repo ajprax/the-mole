@@ -46,13 +46,13 @@ object ServerModule {
                     val debriefings = {
                       if (camp == America) {
                         for {
-                          debriefing <- skillTracker.prevDebriefings.eval._1
+                          debriefing <- skillTracker.prevResults.eval._1.debriefings
                           if (debriefing.level <= debriefingLevel)
                           } yield debriefing.toString
                         }
                       else {
                         for {
-                          debriefing <- skillTracker.prevDebriefings.eval._2
+                          debriefing <- skillTracker.prevResults.eval._2.debriefings
                           if (debriefing.level <= debriefingLevel)
                           } yield debriefing.toString
                         }

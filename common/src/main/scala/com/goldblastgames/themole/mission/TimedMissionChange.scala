@@ -11,7 +11,6 @@ class TimedMissionChange(period: Long) extends EventSource[Tuple2[Mission, Missi
     class MissionTimerTask() extends TimerTask {
       override def run(): Unit = {
         val missions = Mission.nextMissions
-        println("missions occur " + missions)
         occur(missions)
       }
     }

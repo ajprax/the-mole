@@ -46,7 +46,7 @@ case class DebriefingLevelTwo (camp: Nation, totalsBySkill: Map[Nation, Map[Skil
       submissionTotals.map {
         case (skill, submissionValue) =>
           skill.toString + ": " + submissionValue
-        }.reduce(_ + ",\n" + _)
+        }.reduce(_ + "\n" + _)
       }
     }
 
@@ -60,8 +60,8 @@ case class DebriefingLevelThree (camp: Nation, totalsByPlayer: Map[Player, Behav
     "\nTotal amount submitted by each player in your camp:\n" +
       playerTotals.map {
         case (player, submissionValue) =>
-          player.toString + ": " + submissionValue
-        }.reduce(_ + ",\n" + _)
+          player.name + ": " + submissionValue.eval
+        }.reduce(_ + "\n" + _)
     }
   }
 
@@ -78,7 +78,7 @@ case class DebriefingLevelFour (camp: Nation, totalsBySkillByCamp: Map[Nation, M
       submissionTotals.map {
         case (skill, submissionValue) =>
           skill.toString + ": " + submissionValue
-        }.reduce(_ + ",\n" + _)
+        }.reduce(_ + "\n" + _)
     }
   }
 
@@ -91,11 +91,13 @@ case class DebriefingLevelFive (camp: Nation, submittedSkills: Map[Nation, Map[S
       player <- submittedSkills(nation)(skill).keys
       if (player.camp == camp)
       } yield (player, skill, submittedSkills(nation)(skill)(player).eval)
-    "\nTotal of each skill submitted by each player in your camp to your camp's mission:\n" +
-      submissionTotals.filter(
-        (submission: (Player, Skill, Int)) => submission._3 != 0).map {
+    val filtered = submissionTotals.filter((submission: (Player, Skill, Int)) => submission._3 != 0)
+    val formatted: List[String] = filtered.map {
           case (player, skill, submissionValue) =>
-            player.toString + ": " + skill.toString + ": " + submissionValue
-          }
+            player.name + ": " + skill.toString + ": " + submissionValue
+          }.toList
+    if (formatted != Nil) "\nTotal of each skill submitted by each player in your camp to your camp's mission:\n" +
+      formatted.reduce(_ + "\n" + _)
+    else "No skills submitted by players in your camp to your camp's missions."
     }
   }

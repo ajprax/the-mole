@@ -120,8 +120,15 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
     }.toMap
 
   // Result depends on previous mission's skill requirements and the totals behaviours
-  val prevResults: Behaviour[Tuple2[MissionResult, MissionResult]] = missionTracker.prevMissions.map(evaluateResult(_))
+  val prevResults: Behaviour[Tuple2[MissionResult, MissionResult]] = missionTracker.prevMissions.map(evaluateResults(_))
 
+  def evaluateResults(missions: (Mission, Mission)): (MissionResult, MissionResult) = {
+    val (americaSuccess, ussrSuccess) = evaluateSuccess(missions)
+    val (americaDebriefings, ussrDebriefings) = getDebriefings(missions)
+    (new MissionResult(americaSuccess, americaDebriefings), new MissionResult(ussrSuccess, ussrDebriefings))
+    }
+
+  // Subtract negative skill totals from positive skill totals
   def findMargins(mission: Mission): (Int, Int) =
     (sum(mission.camp, mission.primaryObjective.positiveSkills) - sum(mission.camp, mission.primaryObjective.negativeSkills),
      sum(mission.camp, mission.secondaryObjective.positiveSkills) - sum(mission.camp, mission.secondaryObjective.negativeSkills))
@@ -139,9 +146,9 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
     submissionsList.reduce(_ + _)
     }
 
-  def evaluateResult(missions: Tuple2[Mission, Mission]): Tuple2[MissionResult, MissionResult] = {
+  def evaluateSuccess(missions: Tuple2[Mission, Mission]): ((Boolean, Boolean), (Boolean, Boolean)) = {
 
-    def singleMission(mission: Mission): MissionResult = {
+    def singleMission(mission: Mission): (Boolean, Boolean) = {
       if (mission == null) (true, true) else {
       val primaryObjective = mission.primaryObjective
       val secondaryObjective = mission.secondaryObjective
@@ -158,8 +165,6 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
       }
     (singleMission(missions._1), singleMission(missions._2))
   }
-
-  val prevDebriefings: Behaviour[Tuple2[List[MissionDebriefing], List[MissionDebriefing]]] = missionTracker.prevMissions.map(getDebriefings(_))
 
   def getDebriefings(missions: Tuple2[Mission, Mission]) = {
     def singleCamp(mission: Mission): List[MissionDebriefing] = {
