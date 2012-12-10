@@ -5,6 +5,7 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
 
 import com.github.oetzi.echo.EchoSpecification
+import com.goldblastgames.themole.Nation._
 import com.goldblastgames.themole.io.Connect
 import com.goldblastgames.themole.io.DeadDrop
 import com.goldblastgames.themole.io.Packet
@@ -17,6 +18,10 @@ trait TheMoleSpecification extends EchoSpecification {
 
   implicit val arbSkill: Arbitrary[Skill] = Arbitrary {
     Gen.oneOf(InformationGathering, Wetwork, Sabotage, Sexitude, Stoicism)
+  }
+
+  implicit val arbNation: Arbitrary[Nation] = Arbitrary {
+    Gen.oneOf(America, USSR)
   }
 
   implicit val arbConnect: Arbitrary[Connect] = Arbitrary {
@@ -42,9 +47,10 @@ trait TheMoleSpecification extends EchoSpecification {
   implicit val arbSubmitCommand: Arbitrary[SubmitCommand] = Arbitrary {
     for {
       sender <- arbitrary[String]
+      camp <- arbitrary[Nation]
       skill <- arbitrary[Skill]
       amount <- arbitrary[Int]
-    } yield SubmitCommand(sender, skill, amount)
+    } yield SubmitCommand(sender, camp, skill, amount)
   }
 
   implicit val arbPacket: Arbitrary[Packet] = Arbitrary {
