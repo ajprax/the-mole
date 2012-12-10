@@ -156,13 +156,15 @@ object Server extends EchoApp {
 
         val dmMessages = Stdin.filter(_ matches dmRegex)
             .map { (_, command) =>
-              val dmMatcher(player, message) = command
+              val dmMatcher(channel, message) = command
 
-              (player, message)
+              (channel, message)
             }
 
         players
-            .map(player => (player, dmMessages.filter { case (name, _) => player.name == name }))
+            .map(player => (player, dmMessages.filter {
+                case (channel, _) => {player.name == channel || player.camp.toString == channel || channel == "all"}
+               }))
             .toMap
             .map { case (player, messages) => (player, messages.map((_, msg) => { println("Sending server message: %s".format(msg._2)); Message("server", player.name, msg._2) } )) }
       }
