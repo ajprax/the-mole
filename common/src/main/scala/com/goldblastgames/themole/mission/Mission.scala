@@ -2,109 +2,29 @@ package com.goldblastgames.themole.mission
 
 import com.goldblastgames.themole.Nation._
 import com.goldblastgames.themole.skills.Skills._
-
-case class SkillRequirement(skill: Skill, min: Int) {
-  def humanString(): String = {
-    "%s: %s".format(skill, min)
-  }
-}
-
-object Rewards extends Enumeration {
-  type Reward = Value
-  val MRD, points = Value
-}
-
-case class MissionObjective(
-  primary: SkillRequirement, 
-  successFunc: (Boolean, Option[Boolean]) => Boolean, 
-  secondary: Option[SkillRequirement], 
-  reward: Rewards.Reward
-) {
-  def humanString(): String = {
-    "Skill 1: %s\n Skill2: %s\n Reward:".format(
-      primary.humanString,
-      if (secondary.isEmpty) { "None" } else {secondary.get.humanString},
-      reward.toString
-    )
-  }
-}
+import com.goldblastgames.themole.skills.Skills
 
 case class Mission(
+  camp: Nation,
   day: Int,
-  difficulty: Int,
-  linked: Boolean,
-  opposed: Boolean,
-  primaryType: String,
-  skills: List[String],
-  rewards: List[List[String]]
+  primaryObjective: PrimaryObjective,
+  secondaryObjective: SecondaryObjective
 ) {
 
   override def toString: String = {
-    val lineOne = "Mission #%s:".format(day)
-    val lineTwoA = if (primaryType == "AND") "and"
-                   else if (primaryType == "OR") "or"
-                   else ""
-    val lineTwoB = if (primaryType == "single") "" else skills(1)
-    val lineTwo = "Primary Objective requires: %s %s %s".format(skills(0), lineTwoA, lineTwoB)
-    val lineThree = "  difficulty: exceed the enemy by: " + difficulty
-    val lineFour = "  rewards: " + rewards(0)(0)
-    val lineFiveA = if (linked) " and completion of the Primary Objective" else ""
-    val lineFive = "Secondary Objective requires: " + skills(2) + lineFiveA
-    val lineSix = if (opposed) "  difficulty: exceed the enemy by: " + difficulty else "  difficulty: exceed %s in total submissions".format((difficulty + 6))
-    val lineSeven = "  rewards: " + rewards(0)(1)
-    "%s\n%s\n%s\n%s\n%s\n%s\n%s".format(lineOne, lineTwo, lineThree, lineFour, lineFive, lineSix, lineSeven)
-  }
+    val lineOne = "%s Mission #%s:".format(camp, day)
+    val primary = primaryObjective
+    val secondary = secondaryObjective
+    "%s\n%s\n%s".format(lineOne, primary, secondary)
+    }
 }
-/*
-case class Mission(
-  id: Int,
-  team: Nation,
-  primaryObjective: MissionObjective,
-  secondaryObjective: MissionObjective,
-  description: String
-) {
-  def humanString(): String = {
-    ("Mission #%s for Team %s: \n" +
-    "Primary Objective requires: %s \n" +
-    "Secondary Objective requires: %s \n" +
-    "Mission description: %s").format(
-      id,
-      team.toString, 
-      primaryObjective.humanString, 
-      secondaryObjective.humanString, 
-      description
-    )
-  }
-}
-*/
-case class MissionResult(
-  mission: Mission,
-  success: Boolean,
-  level1: Option[Debriefing1],
-  level2: Option[Debriefing2],
-  body: String
-) {
-  def humanString(): String = {
-    "\n%s \nSubmitted Skills \n%s".format(mission, body)
-  }
-}
-
-// TODO: Actual mission debriefing detail.
-case class Debriefing1(
-  margins: Map[MissionObjective, Int]
-)
-
-case class Debriefing2(
-  submitted: Map[Skill, Int]
-)
 
 object Mission {
-
-  def nextMission = new (AaronGenerator).next
-
+  val generator = new MissionGenerator
+  def nextMissions = generator.next
 }
 
-class AaronGenerator {
+class MissionGenerator {
   import scala.util.Random
   private var day: Int = 0
   val random = new Random()
@@ -136,7 +56,14 @@ class AaronGenerator {
     }
   // getSkills works, but it's pretty unweildy
   def getSkills = {
-    val shuffledSkills = random.shuffle(List(random.shuffle(List("Subterfuge", "Information Gathering")), random.shuffle(List("Wetwork", "Sabotage")), random.shuffle(List("Sexitude", "Stocism"))))
+    val shuffledSkills =
+      random.shuffle(
+        List(
+          random.shuffle(List(Subterfuge, InformationGathering)),
+          random.shuffle(List(Wetwork, Sabotage)),
+          random.shuffle(List(Sexitude, Stoicism))
+        )
+      )
     List(shuffledSkills(0)(0), shuffledSkills(1)(0), shuffledSkills(2)(0))
     }
   def getRewards = { // all rewards are the same probability at all times for now
@@ -189,6 +116,10 @@ class AaronGenerator {
     List(getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
   def next = {
     day += 1
-    new Mission(day, getDifficulty, linked, opposed, primaryType, getSkills, getRewards)
+    val (difficultyAmerica, difficultyUSSR) = (getDifficulty, getDifficulty)
+    val (skillsAmerica, skillsUSSR) = (getSkills, getSkills)
+    val (rewardsAmerica, rewardsUSSR) = (getRewards, getRewards)
+    (new Mission(America, day, PrimaryObjective(skillsAmerica, difficultyAmerica, primaryType, rewardsAmerica), SecondaryObjective(skillsAmerica, difficultyAmerica, linked, opposed, rewardsAmerica)),
+    new Mission(USSR, day, PrimaryObjective(skillsUSSR, difficultyUSSR, primaryType, rewardsUSSR), SecondaryObjective(skillsUSSR, difficultyUSSR, linked, opposed, rewardsUSSR)))
   }
 }

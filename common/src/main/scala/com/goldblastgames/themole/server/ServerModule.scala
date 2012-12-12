@@ -6,6 +6,7 @@ import java.util.TimerTask
 import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
+import com.github.oetzi.echo.core.Stepper
 
 // TODO: Make a channel object explicitly that is an Event that returns events.
 //       May necessitate modifying echo with the CanBuild pattern
@@ -31,8 +32,6 @@ object ServerModule {
         // Mission Tracker
         val missionTracker = new MissionTracker(missionSource)
 
-        // TODO(issue-33): Resolve missions based on submitted skills.
-
         //TODO reset skilltracker after each mission
         val skillTracker = new SkillTracker(sources, missionTracker)
 
@@ -41,16 +40,41 @@ object ServerModule {
             p -> {
               // Previous mission debriefing
               val debriefing: Event[Message] =
-                missionSource.map((_, mission) =>
+                missionSource.map((_, missions) => {
+                  val messageBody = {
+                    val debriefingLevel = skillTracker.debriefingLevels(p).eval
+                    val debriefings = {
+                      if (camp == America) {
+                        for {
+                          debriefing <- skillTracker.prevResults.eval._1.debriefings
+                          if (debriefing.level <= debriefingLevel)
+                          } yield debriefing.toString
+                        }
+                      else {
+                        for {
+                          debriefing <- skillTracker.prevResults.eval._2.debriefings
+                          if (debriefing.level <= debriefingLevel)
+                          } yield debriefing.toString
+                        }
+                      }
+                    debriefings.reduce(_ + "\n" + _)
+                    }
                   new Message(
                     "Mission Report",
                     name,
-                    skillTracker.prevResult.eval().humanString
-                  )
+                    messageBody
+                    )
+                  }
                 )
 
               // New mission notifications
-              val notifications: Event[Message] = missionSource.map((_, mission) => new Message("Mission Center", name, mission.toString))
+              val notifications: Event[Message] = missionSource.map((_, missions) => {
+                val messageBody =
+                  if (camp == America) missions._1.toString
+                  else missions._2.toString
+                new Message("Mission Center", name, messageBody)
+                }
+              )
 
               // Merge new mission notifications and debriefing notifications
               debriefing merge notifications
