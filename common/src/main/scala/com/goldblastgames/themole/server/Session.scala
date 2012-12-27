@@ -2,8 +2,8 @@ package com.goldblastgames.themole.server
 
 import java.io.BufferedInputStream
 import java.io.InputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.net.Socket
 
 import com.github.oetzi.echo.core.Event
@@ -12,6 +12,7 @@ import com.github.oetzi.echo.core.EventSource
 import com.goldblastgames.themole.Player
 import com.goldblastgames.themole.io.Connect
 import com.goldblastgames.themole.io.Packet
+import com.goldblastgames.themole.io.PacketSerialization._
 
 class Session private(
   val port: Int,
@@ -19,14 +20,15 @@ class Session private(
   val module: Map[Player, Event[Packet]] => Map[Player, Event[Packet]]
 ) {
 
-  val server = new EventSource[(String, (ObjectInputStream, ObjectOutputStream))] {
+  val server = new EventSource[(String, (DataInputStream, DataOutputStream))] {
     Listener(port)
         .foreach { socket =>
-          val out: ObjectOutputStream = new ObjectOutputStream(socket.getOutputStream)
-          val in: ObjectInputStream = new ObjectInputStream(socket.getInputStream)
+          val out: DataOutputStream = new DataOutputStream(socket.getOutputStream)
+          val in: DataInputStream = new DataInputStream(socket.getInputStream)
 
           println("Waiting for connection string...")
-          in.readObject match {
+          val data = in.readUTF
+          deserialize(data) match {
             case Connect(name) => {
               println("Player %s connected.".format(name))
               occur((name, (in, out)))

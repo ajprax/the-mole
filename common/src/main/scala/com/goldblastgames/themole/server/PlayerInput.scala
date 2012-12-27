@@ -1,33 +1,34 @@
 package com.goldblastgames.themole.server
 
 import java.io.EOFException
-import java.io.ObjectInputStream
+import java.io.DataInputStream
 
 import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
 
 import com.goldblastgames.themole.io.Packet
+import com.goldblastgames.themole.io.PacketSerialization._
 
 class PlayerInput(
   val name: String,
-  val connect: Event[ObjectInputStream]
+  val connect: Event[DataInputStream]
 ) extends EventSource[Packet] {
 
-  connect.foreach { in: ObjectInputStream =>
+  connect.foreach { in: DataInputStream =>
 
     val thread = new Thread(new Runnable() {
       def run() {
         Iterator
             .continually({
               try {
-                in.readObject
+                in.readUTF()
               } catch {
                 case ex: EOFException => null
               }
             })
             .takeWhile(_ != null)
-            .collect({ case x: Packet => x })
+            .collect({ case x: String => deserialize(x) })
             .foreach(occur(_))
         println("Closing %s's socket".format(name))
         in.close()
@@ -44,3 +45,4 @@ class PlayerInput(
     this.foldLeft(init)(combine)
   }
 }
+

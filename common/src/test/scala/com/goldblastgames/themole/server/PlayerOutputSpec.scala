@@ -1,17 +1,17 @@
 package com.goldblastgames.themole.server
 
-import java.io.ObjectOutputStream
-import java.io.ObjectInputStream
+import java.io.DataOutputStream
+import java.io.DataInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
 
-import org.apache.commons.lang3.SerializationUtils
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
 
 import com.github.oetzi.echo.TestEvent
 import com.goldblastgames.themole.TheMoleSpecification
 import com.goldblastgames.themole.io.Packet
+import com.goldblastgames.themole.io.PacketSerialization._
 
 class PlayerOutputSpec
     extends Specification
@@ -19,12 +19,12 @@ class PlayerOutputSpec
     with TheMoleSpecification {
 
   trait PlayerOutputTest {
-    val connections = new TestEvent[ObjectOutputStream]
+    val connections = new TestEvent[DataOutputStream]
     val packets = new TestEvent[Packet]
     val output = new ByteArrayOutputStream
 
     val playerOutput = new PlayerOutput("player", connections, packets)
-    connections.pubOccur(new ObjectOutputStream(output))
+    connections.pubOccur(new DataOutputStream(output))
   }
 
   "PlayerOutput instances" should {
@@ -32,7 +32,8 @@ class PlayerOutputSpec
       new PlayerOutputTest {
         packets.pubOccur(expected)
 
-        val actual = SerializationUtils.deserialize(output.toByteArray)
+        val ois = new DataInputStream(new ByteArrayInputStream(output.toByteArray))
+        val actual = deserialize(ois.readUTF)
         actual mustEqual expected
       }
       ()
@@ -41,8 +42,8 @@ class PlayerOutputSpec
       new PlayerOutputTest {
         messages.foreach(packets.pubOccur(_))
 
-        val ois = new ObjectInputStream(new ByteArrayInputStream(output.toByteArray))
-        messages.foreach(ois.readObject mustEqual _)
+        val ois = new DataInputStream(new ByteArrayInputStream(output.toByteArray))
+        messages.foreach(deserialize(ois.readUTF) mustEqual _)
       }
       ()
     }
@@ -60,12 +61,12 @@ class PlayerOutputSpec
         messages.foreach(packets.pubOccur(_))
 
         val output2 = new ByteArrayOutputStream
-        connections.pubOccur(new ObjectOutputStream(output2))
+        connections.pubOccur(new DataOutputStream(output2))
 
-        val ois = new ObjectInputStream(new ByteArrayInputStream(output.toByteArray))
-        val ois2 = new ObjectInputStream(new ByteArrayInputStream(output2.toByteArray))
-        messages.foreach(ois.readObject mustEqual _)
-        messages.foreach(ois2.readObject mustEqual _)
+        val ois = new DataInputStream(new ByteArrayInputStream(output.toByteArray))
+        val ois2 = new DataInputStream(new ByteArrayInputStream(output2.toByteArray))
+        messages.foreach(deserialize(ois.readUTF) mustEqual _)
+        messages.foreach(deserialize(ois2.readUTF) mustEqual _)
       }
       ()
     }
