@@ -4,7 +4,6 @@ import java.io.BufferedInputStream
 import java.io.InputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import java.net.Socket
 
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource

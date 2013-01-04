@@ -1,26 +1,23 @@
 package com.goldblastgames.themole.server
 
 import java.lang.Thread
-import java.net.ServerSocket
-import java.net.Socket
 
 import com.github.oetzi.echo.core.EventSource
+import unfiltered.netty.websockets._
 
 case class Listener(
   val port: Int
-) extends EventSource[Socket] {
+) extends EventSource[WebSocket] {
 
   private val thread: Thread = new Thread(new Runnable() {
     def run() {
-      val socket: ServerSocket = new ServerSocket(port)
-
-      // Accept connections.
-      val connections: Iterator[Socket] = Iterator.continually(socket.accept())
-      connections.foreach(occur(_))
-
-      // Clean up once done.
-      connections.foreach(_.close())
-      socket.close()
+      WebSocketServer("/", port) {
+        case Open(s) => occur(s)
+        case Message(s, Text(str)) => println("message %s".format(str))
+        case Close(s) => println("should close %s".format(s))
+        // TODO: log errors
+        case Error(s,e) => println("error %s".format(e.getMessage))
+      }
     }
   })
   thread.start()
