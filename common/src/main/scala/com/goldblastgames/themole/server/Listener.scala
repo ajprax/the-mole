@@ -13,8 +13,6 @@ case class Listener(
     def run() {
       WebSocketServer("/", port) {
         case Open(s) => occur(s)
-        case Message(s, Text(str)) => println("message %s".format(str))
-        case Close(s) => println("should close %s".format(s))
         // TODO: log errors
         case Error(s,e) => println("error %s".format(e.getMessage))
       }

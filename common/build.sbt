@@ -12,10 +12,5 @@ libraryDependencies ++= Seq(
   "org.specs2" %% "specs2" % "1.12.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
   "org.apache.commons" % "commons-lang3" % "3.1" % "test",
-  "net.databinder" %% "unfiltered-netty-websockets" % "0.6.4",
-  "net.databinder" %% "unfiltered-netty" % "0.6.4",
-  "net.databinder" %% "unfiltered" % "0.6.4",
-  "net.databinder" %% "unfiltered-netty-server" % "0.6.4",
-  "net.databinder" %% "unfiltered-jetty" % "0.6.4",
-  "net.databinder" %% "unfiltered-util" % "0.6.4"
+  "net.databinder" %% "unfiltered-netty-websockets" % "0.6.5"
   )
