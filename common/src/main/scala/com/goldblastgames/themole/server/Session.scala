@@ -21,8 +21,8 @@ class Session private(
 
   val server = new EventSource[(String, (DataInputStream, DataOutputStream))] {
     Listener(port)
-        .foreach { socket =>
-          val out: DataOutputStream = new DataOutputStream(socket.getOutputStream)
+        .foreach { case (socket, input) =>
+          val out: DataOutputStream = new DataOutputStream(new WSOutputStream(socket))
           val in: DataInputStream = new DataInputStream(socket.getInputStream)
 
           println("Waiting for connection string...")
@@ -68,7 +68,7 @@ class Session private(
         val output = outputStreams
             .filter({ case (name, _) => name == player.name })
             .map((_, x) => x._2)
-        
+
         (player, new PlayerOutput(player.name, output, moduleOutputs(player)))
       })
       .toMap
