@@ -10,7 +10,7 @@ import java.io.OutputStream
 
 case class Listener(
   val port: Int
-) extends EventSource[(WebSocket, EventSource[String])] {
+) extends EventSource[(WebSocket, WSEvent)] {
 
   private val thread: Thread = new Thread(new Runnable() {
     def run() {
@@ -35,9 +35,13 @@ case class Listener(
 
 // TODO: move these somewhere else
 class WSOutputStream(s: WebSocket) extends OutputStream {
-  def write(b: Array[Byte]) {
+  override def write(b: Array[Byte]) {
     // TODO: check this is correct
     s.send(b.toString)
+  }
+
+  override def write(i: Int) {
+    s.send(i.toString)
   }
 }
 

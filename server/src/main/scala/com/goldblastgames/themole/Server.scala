@@ -160,7 +160,7 @@ object Server extends EchoApp {
 
       // Join all the resulting streams and output them.
       val output = join(chatOutput, missionOutput, deadDropOutput, dmOutput)
-      
+
       // Log the raw output.
       output.foreach { case (player, connection) =>
         connection.foreach(msg => println("Raw to %s: %s".format(player, msg)))

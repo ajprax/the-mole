@@ -13,24 +13,40 @@ import com.goldblastgames.themole.io.Connect
 import com.goldblastgames.themole.io.Packet
 import com.goldblastgames.themole.io.PacketSerialization._
 
+/**
+ * Provides the input/output capabilities for a server session.
+ *
+ * module is the actual behaviour of the server
+**/
+
 class Session private(
   val port: Int,
   val players: Seq[Player],
   val module: Map[Player, Event[Packet]] => Map[Player, Event[Packet]]
 ) {
 
-  val server = new EventSource[(String, (DataInputStream, DataOutputStream))] {
+  // The connections from players and corresponding inputs/outputs
+  val server = new EventSource[(String, (WSEvent, DataOutputStream))] {
     Listener(port)
         .foreach { case (socket, input) =>
           val out: DataOutputStream = new DataOutputStream(new WSOutputStream(socket))
-          val in: DataInputStream = new DataInputStream(socket.getInputStream)
+          // val in: DataInputStream = new DataInputStream(input)
 
           println("Waiting for connection string...")
-          val data = in.readUTF
+          // val data = in.readUTF
+          val allData = input.foldLeft(Seq[String]())((acc, p) => acc ++ Seq[String](p))
+          val data = {
+            while(allData.eval.size < 1) {
+              Thread.sleep(1000)
+            }
+            val curr = allData.eval
+            curr(0)
+          }
+
           deserialize(data) match {
             case Connect(name) => {
               println("Player %s connected.".format(name))
-              occur((name, (in, out)))
+              occur((name, (input, out)))
             }
 
             case x => {
@@ -40,12 +56,16 @@ class Session private(
           }
         }
   }
-  val inputStreams = server.map { (_, connection) =>
+
+  // Only inputs from players
+  val inputStreams: Event[(String, WSEvent)] = server.map { (_, connection) =>
     val (name, (inputStream, _)) = connection
 
     (name, inputStream)
   }
-  val outputStreams = server.map { (_, connection) =>
+
+  // Only outputs to players
+  val outputStreams: Event[(String, DataOutputStream)] = server.map { (_, connection) =>
     val (name, (_, outputStream)) = connection
 
     (name, outputStream)

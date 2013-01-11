@@ -12,6 +12,45 @@ import com.goldblastgames.themole.io.PacketSerialization._
 
 class PlayerInput(
   val name: String,
+  val connect: Event[WSEvent]
+) extends EventSource[Packet] {
+
+  connect.foreach { in: WSEvent =>
+
+    val thread = new Thread(new Runnable() {
+      def run() {
+        in.map({case (x,y) => occur(deserialize(y))})
+      /*
+        Iterator
+            .continually({
+              try {
+                in.readUTF()
+              } catch {
+                case ex: EOFException => null
+              }
+            })
+            .takeWhile(_ != null)
+            .collect({ case x: String => deserialize(x) })
+            .foreach(occur(_))
+        println("Closing %s's socket".format(name))
+        in.close()
+        */
+      }
+    })
+    thread.start()
+  }
+
+  // Store received packets.
+  val history: Behaviour[Seq[Packet]] = {
+    val init: Seq[Packet] = Seq()
+    def combine(packets: Seq[Packet], packet: Packet) = packets ++ Seq(packet)
+
+    this.foldLeft(init)(combine)
+  }
+}
+
+class ClientPlayerInput(
+  val name: String,
   val connect: Event[DataInputStream]
 ) extends EventSource[Packet] {
 
