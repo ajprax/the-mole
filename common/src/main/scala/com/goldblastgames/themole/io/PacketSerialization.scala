@@ -21,6 +21,14 @@ object PacketSerialization {
   val deadDropFields = List("body")
   val messageFields = List("sender","channel","body")
   val submitFields = List("sender","camp","skill","amount")
+  val skillSetupFields = List("player","regenValue","bonusValues","currentValues","maxValues"
+    ,"submittedSkillUSA","submittedSkillUSSR","submittedValueUSA","submittedValueUSSR")
+  val playerInfoFields = List("player","skillBonuses","skillMaxes","gambits","secretive"
+    ,"camp")
+  val missionInfoFields = List("camp","day","skillOne","skillTwo","skillThree","rewardsOne"
+    ,"rewardsTwo","rewardsInfoOne","rewardsInfoTwo","difficulty","primaryType","linked"
+    ,"opposed")
+  val errorMessageFields = List("title","body")
 
   def serialize(packet: Packet): String = {
 
@@ -46,6 +54,18 @@ object PacketSerialization {
       }
       case p: SubmitCommand => {
         return jsonFromPacket(submitFields, p).toString
+      }
+      case p: SkillSetup => {
+        return jsonFromPacket(skillSetupFields, p).toString
+      }
+      case p: PlayerInfo => {
+        return jsonFromPacket(playerInfoFields, p).toString
+      }
+      case p: MissionInfo => {
+        return jsonFromPacket(missionInfoFields, p).toString
+      }
+      case p: ErrorMessage => {
+        return jsonFromPacket(missionInfoFields, p).toString
       }
       case p => {
         throw new RuntimeException("Can't serialize Packet: %s".format(p))
@@ -91,6 +111,54 @@ object PacketSerialization {
                   Nation.withName(jsonFields(submitFields(1)).asInstanceOf[String]),
                   Skills.withName(jsonFields(submitFields(2)).asInstanceOf[String]),
                   jsonFields(submitFields(3)).asInstanceOf[String].toInt
+                )
+              } else if (packetType == "SkillSetup") {
+                // shouldn't ever have to deserialize this type because it is server
+                // to client only, but safer to have the option
+                new SkillSetup(
+                  jsonFields(skillSetupFields(0)).asInstanceOf[String],
+                  jsonFields(skillSetupFields(1)).asInstanceOf[Int],
+                  jsonFields(skillSetupFields(2)).asInstanceOf[List[Int]],
+                  jsonFields(skillSetupFields(3)).asInstanceOf[List[Int]],
+                  jsonFields(skillSetupFields(4)).asInstanceOf[List[Int]],
+                  jsonFields(skillSetupFields(5)).asInstanceOf[String],
+                  jsonFields(skillSetupFields(6)).asInstanceOf[String],
+                  jsonFields(skillSetupFields(7)).asInstanceOf[Int],
+                  jsonFields(skillSetupFields(8)).asInstanceOf[Int]
+                )
+              } else if (packetType == "PlayerInfo") {
+                // shouldn't ever have to deserialize this type because it is server
+                // to client only, but safer to have the option
+                new PlayerInfo(
+                  jsonFields(playerInfoFields(0)).asInstanceOf[String],
+                  jsonFields(playerInfoFields(1)).asInstanceOf[List[Int]],
+                  jsonFields(playerInfoFields(2)).asInstanceOf[List[Int]],
+                  jsonFields(playerInfoFields(3)).asInstanceOf[List[String]],
+                  jsonFields(playerInfoFields(4)).asInstanceOf[Boolean],
+                  jsonFields(playerInfoFields(5)).asInstanceOf[String]
+                )
+              } else if (packetType == "MissionInfo") {
+                // shouldn't ever have to deserialize
+                new MissionInfo(
+                  Nation.withName(jsonFields(missionInfoFields(0)).asInstanceOf[String]),
+                  jsonFields(missionInfoFields(1)).asInstanceOf[Int],
+                  Skills.withName(jsonFields(missionInfoFields(2)).asInstanceOf[String]),
+                  Skills.withName(jsonFields(missionInfoFields(3)).asInstanceOf[String]),
+                  Skills.withName(jsonFields(missionInfoFields(4)).asInstanceOf[String]),
+                  jsonFields(missionInfoFields(5)).asInstanceOf[String],
+                  jsonFields(missionInfoFields(6)).asInstanceOf[String],
+                  jsonFields(missionInfoFields(7)).asInstanceOf[String],
+                  jsonFields(missionInfoFields(8)).asInstanceOf[String],
+                  jsonFields(missionInfoFields(9)).asInstanceOf[Int],
+                  jsonFields(missionInfoFields(10)).asInstanceOf[String],
+                  jsonFields(missionInfoFields(11)).asInstanceOf[Boolean],
+                  jsonFields(missionInfoFields(12)).asInstanceOf[Boolean]
+                )
+              } else if (packetType == "ErrorMessage") {
+                // shouldn't ever have to deserialize
+                new ErrorMessage(
+                  jsonFields(errorMessageFields(0)).asInstanceOf[String],
+                  jsonFields(errorMessageFields(1)).asInstanceOf[String]
                 )
               } else {
                 throw new RuntimeException(
