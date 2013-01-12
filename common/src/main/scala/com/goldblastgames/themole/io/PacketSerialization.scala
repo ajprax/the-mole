@@ -171,6 +171,5 @@ object PacketSerialization {
       }
     }
   }
-
 }
 

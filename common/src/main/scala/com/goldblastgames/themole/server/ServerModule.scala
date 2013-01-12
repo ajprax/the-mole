@@ -36,7 +36,7 @@ object ServerModule {
         val skillTracker = new SkillTracker(sources, missionTracker)
 
         val missionSinks = sources.keys.map {
-          case p @ Player(name, camp, allegiance) => {
+          case p @ Player(name, camp, allegiance, _) => {
             p -> {
               // Previous mission debriefing
               val debriefing: Event[Message] =
@@ -207,7 +207,7 @@ object ServerModule {
 
       // Build sets of player's sink components.
       val sinks = sources.keys.map {
-        case p @ Player(name, nation, _) => {
+        case p @ Player(name, nation, _, _) => {
           val appliedEffects = effects.filter(_.select(p))
           val channelSinks = allChannel merge campChannels(nation) merge playerChannels(p)
 

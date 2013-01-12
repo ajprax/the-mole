@@ -124,7 +124,6 @@ object Server extends EchoApp {
           .mapValues(_.map((_, msg) => msg.asInstanceOf[Packet]))
 
       // Mission system
-      // TODO: fix the hack of having 2 modules
       val missionModule = ServerModule.mission(new TimedMissionChange(missionFreq))
       val missionInput = connections.
           mapValues(_.filter(_.isInstanceOf[SubmitCommand])

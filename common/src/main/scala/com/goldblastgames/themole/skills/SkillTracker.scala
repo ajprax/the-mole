@@ -4,6 +4,7 @@ import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Constant
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.Stepper
+import com.github.oetzi.echo.Echo._
 
 import com.goldblastgames.themole.io.SubmitCommand
 import com.goldblastgames.themole.Player
@@ -16,7 +17,6 @@ import com.goldblastgames.themole.mission.MissionResult._
 import com.goldblastgames.themole.mission.MissionResult
 
 class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: MissionTracker) {
-
   // A behaviour[int] that is always zero
   val zero: Behaviour[Int] = new Constant(0)
 
@@ -30,7 +30,7 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
       }.toMap
     }
 
-  // Behaviours for each skill of each player
+  // Behaviours for each submitted skill of each player
   val submittedSkills: Map[Nation, Map[Skill, Map[Player, Behaviour[Int]]]] =
     Nation.values.map {
       case nation => {
@@ -40,15 +40,66 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
               skill -> {
                 sources.map{
                   case (player, event) => {
+                    // an Event[Int] with occurences at the same times as TimedMissionChange
+                    // always valued at 0 to reset submissions
+                    val resetSubmissionAmount: Event[Int] = missionTracker.missionEvent
+                      .map((_, _) => 0)
                     val filteredSubmissionAmount: Event[Int] = event
                       .filter(submit => submit.camp == nation)
                       .filter(submit => submit.skill == skill)
+                      .filter(submit => submit.amount <= currentSkills(player)(skill).eval())
                       .map((t, submission) => submission.amount)
-
-                    player -> new Stepper[Int](0, filteredSubmissionAmount)
+                    val currentValue = filteredSubmissionAmount merge resetSubmissionAmount
+                    player -> currentValue.foldLeft((0, 0))((prev: (Int, Int), curr: Int) => (prev._2, curr)).map(tup => tup._1)
                   }
                 }
               }
+            }
+          }.toMap
+        }
+      }
+    }.toMap
+
+  // Behaviours for skill submissions by player independent of mission
+  // used by player skill tracking, not in debriefings
+  val submissionsByPlayerBySkill: Map[Player, Map[Skill, Behaviour[Int]]] =
+    sources.map {
+      case (player, event) => {
+        player -> {
+          Skills.values.map {
+            case skill => {
+              val filteredSubmissionAmount: Event[Int] = event
+                .filter(submit => submit.skill == skill)
+                .filter(submit => submit.amount <= currentSkills(player)(skill).eval())
+                .map((t, submission) => submission.amount)
+
+                skill -> new Stepper(0, filteredSubmissionAmount)
+            }
+          }.toMap
+        }
+      }
+    }.toMap
+
+  // Current value of each player's skills
+  val currentSkills: Map[Player, Map[Skill, Behaviour[Int]]] =
+    sources.keys.map {
+      case player => {
+        player -> {
+          Skills.values.map {
+            case skill => {
+              skill -> submissionsByPlayerBySkill(player)(skill)
+                .sample(missionTracker.missionEvent)
+                .map((time: Time, tuple: ((Mission, Mission), Int)) => tuple._2)
+                .merge(missionTracker.missionEvent.map((_, _) => -2))
+                .foldLeft(player.skillsRanges(skill)._2)((current: Int, next: Int) => {
+                  if (current - next < player.skillsRanges(skill)._1)
+                    if (current - next >= 0)
+                      player.skillsRanges(skill)._1
+                    else current
+                  else if (current - next > player.skillsRanges(skill)._2)
+                    current
+                  else current - next
+                })
             }
           }.toMap
         }
@@ -106,9 +157,8 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
                   case (skill, submissions) => {
                     skill -> {
                       submissions.filter(
-                        (submission: (Player, Behaviour[Int])) => submission._1.camp == nation).
-                        values.
-                        foldLeft(zero)(_.map2(_)((x, y) => x + y))
+                        (submission: (Player, Behaviour[Int])) => submission._1.camp == nation)
+                        .values.foldLeft(zero)(_.map2(_)((x, y) => x + y))
                     }
                   }
                 }.toMap
@@ -160,9 +210,9 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
           primary && (secondaryObjective.difficulty < sum(mission.camp, secondaryObjective.positiveSkills) - 6)
         else if (!secondaryObjective.linked && secondaryObjective.opposed) secondaryObjective.difficulty < margins._2
         else secondaryObjective.difficulty < (sum(mission.camp, secondaryObjective.positiveSkills) - 6)
-        }
-      (primary, secondary)}
       }
+      (primary, secondary)}
+    }
     (singleMission(missions._1), singleMission(missions._2))
   }
 
@@ -179,6 +229,5 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
       }
     (singleCamp(missions._1), singleCamp(missions._2))
   }
-
 }
 

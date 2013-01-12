@@ -7,6 +7,7 @@ import scala.xml.XML
 import shapeless.Field
 
 import com.goldblastgames.themole.chat.ChatEffect
+import com.goldblastgames.themole.skills.Skills
 
 package object conf {
   object portField        extends Field[Int]
@@ -25,7 +26,15 @@ package object conf {
       Player(
         (playerNode \ "@name").text,
         Nation.withName((playerNode \ "@camp").text),
-        Nation.withName((playerNode \ "@allegiance").text)
+        Nation.withName((playerNode \ "@allegiance").text),
+        // Dummy skills
+        Map((Skills.withName("InformationGathering") -> (1,10)),
+          (Skills.withName("Subterfuge") -> (1,10)),
+          (Skills.withName("Wetwork") -> (1,10)),
+          (Skills.withName("Sabotage") -> (1,10)),
+          (Skills.withName("Sexitude") -> (1,10)),
+          (Skills.withName("Stoicism") -> (1,10))
+        )
       )
     }
 

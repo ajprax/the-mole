@@ -36,7 +36,7 @@ case class SecondaryObjective(
   ) extends MissionObjective {
   val (positiveSkills, negativeSkills) = (List(skills(2)), List(Skills.skillPairs(skills(2))))
   override def toString = {
-    val lineOneA = if (linked) " and completioin of the Primary Objective" else ""
+    val lineOneA = if (linked) " and completion of the Primary Objective" else ""
     val lineOne = "Secondary Objective requires: " + skills(2) + lineOneA
     val lineTwo = if (opposed) " difficulty: exceed the enemy by: " + difficulty
                   else "  diffculty: exceed %s in total submissions".format((difficulty + 6))

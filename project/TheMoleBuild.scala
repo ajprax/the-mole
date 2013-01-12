@@ -6,7 +6,7 @@ object TheMoleBuild extends Build {
   lazy val theMole = Project(
     id = "the-mole",
     base = file(".")
-  ) aggregate(echo, common, server, cli, web)
+  ) aggregate(echo, common, server, cli/*, web*/)
 
   lazy val echo = Project(
     id = "echo",
@@ -28,8 +28,10 @@ object TheMoleBuild extends Build {
     base = file("cli")
   ) dependsOn(common)
 
+/*
   lazy val web = Project(
     id = "the-mole-web",
     base = file("web")
   ) dependsOn(common)
+  */
 }
