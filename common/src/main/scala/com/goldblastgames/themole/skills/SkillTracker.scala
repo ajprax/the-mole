@@ -20,7 +20,7 @@ class SkillTracker(sources: Map[Player, Event[SubmitCommand]], missionTracker: M
   // A behaviour[int] that is always zero
   val zero: Behaviour[Int] = new Constant(0)
 
-    // Behaviours for each submitted skill of each player
+  // Behaviours for each submitted skill of each player
   val submittedSkills: Map[Nation, Map[Skill, Map[Player, Behaviour[Int]]]] =
     Nation.values.map {
       case nation => {
