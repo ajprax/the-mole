@@ -12,25 +12,24 @@ case class Listener(
   val port: Int
 ) extends EventSource[(WebSocket, WSEvent)] {
 
-  private val thread: Thread = new Thread(new Runnable() {
-    def run() {
-      val inputs = Map[WebSocket, WSEvent]()
-      WebSocketServer("/", port) {
-        case Open(s) => {
-          val in = new WSEvent()
-          occur((s, in))
-        }
-        case Message(s, Text(str)) => {
-          // TODO: send messages through the inputstream
-          inputs(s).messageOccur(str)
-        }
-        case Close(s) => // TODO: what to do when we close sockets?
-        // TODO: log errors
-        case Error(s,e) => println("error %s".format(e.getMessage))
-      }
+  val inputs = Map[WebSocket, WSEvent]()
+  println("Starting websocketserver") // TODO: remove this, just for debugging
+  val server = WebSocketServer("/", port) {
+    case Open(s) => {
+      println("Socket opened!") // TODO: remove this, just for debugging
+      val in = new WSEvent()
+      occur((s, in))
     }
-  })
-  thread.start()
+    case Message(s, Text(str)) => {
+      println("Received message: %s".format(str))
+      inputs(s).messageOccur(str)
+    }
+    case Close(s) => // TODO: what to do when we close sockets?
+    // TODO: log errors
+    case Error(s,e) => println("error %s".format(e.getMessage))
+  }
+
+  server.start()
 }
 
 // TODO: move these somewhere else
