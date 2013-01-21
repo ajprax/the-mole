@@ -8,7 +8,7 @@ case class PrimaryObjective(
   skills: List[Skill],
   difficulty: Int,
   andOrSingle: String,
-  rewards: List[List[String]]
+  reward: MissionReward
   ) extends MissionObjective {
 
   val (positiveSkills, negativeSkills) = {
@@ -23,7 +23,7 @@ case class PrimaryObjective(
     val lineOneB = if (andOrSingle == "single") "" else skills(1)
     val lineOne = "Primary Objective requires: %s %s %s".format(skills(0), lineOneA, lineOneB)
     val lineTwo = "  difficulty: exceed the enemy by: " + difficulty
-    val lineThree = "  reward: " + rewards(0)(0)
+    val lineThree = "  reward: " + reward
     "%s\n%s\n%s".format(lineOne, lineTwo, lineThree)
     }
   }
@@ -32,7 +32,7 @@ case class SecondaryObjective(
   difficulty: Int,
   linked: Boolean,
   opposed: Boolean,
-  rewards: List[List[String]]
+  reward: MissionReward
   ) extends MissionObjective {
   val (positiveSkills, negativeSkills) = (List(skills(2)), List(Skills.skillPairs(skills(2))))
   override def toString = {
@@ -40,7 +40,7 @@ case class SecondaryObjective(
     val lineOne = "Secondary Objective requires: " + skills(2) + lineOneA
     val lineTwo = if (opposed) " difficulty: exceed the enemy by: " + difficulty
                   else "  diffculty: exceed %s in total submissions".format((difficulty + 6))
-    val lineThree = "  rewards: " + rewards(0)(1)
+    val lineThree = "  rewards: " + reward
     "%s\n%s\n%s".format(lineOne, lineTwo, lineThree)
     }
   }

@@ -18,19 +18,18 @@ class DebriefingDummy extends MissionDebriefing {
   override def toString = "dummy debriefing"
   }
 
-case class DebriefingLevelOne (camp: Nation, day: Int, primaryMargin: Int, secondaryMargin: Int) extends MissionDebriefing {
+case class DebriefingLevelOne (camp: Nation, day: Int, primaryMargin: Int, secondaryMargin: Int, score: (Int, Int)) extends MissionDebriefing {
   val level = 1
   override def toString = {
     val lineOne = "%s Mission #%s".format(camp, day)
-    val lineTwo = {
+    val lineTwo =
       if (primaryMargin > 0) "Primary objective passed by %s".format(primaryMargin)
       else "Primary objective failed by %s".format(primaryMargin * -1)
-      }
-    val lineThree = {
+    val lineThree =
       if (secondaryMargin > 0) "Secondary objective passed by %s".format(secondaryMargin)
       else "Secondaryobjective failed by %s".format(secondaryMargin * -1)
-      }
-    "%s\n%s\n%s".format(lineOne, lineTwo, lineThree)
+    val lineFour = "America: %d points, USSR: %d points".format(score._1, score._2)
+    "%s\n%s\n%s\n%s".format(lineOne, lineTwo, lineThree, lineFour)
     }
   }
 
