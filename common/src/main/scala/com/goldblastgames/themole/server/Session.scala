@@ -25,15 +25,14 @@ class Session private(
   val module: Map[Player, Event[Packet]] => Map[Player, Event[Packet]]
 ) {
 
-  // The connections from players and corresponding inputs/outputs
-  val server = new EventSource[(String, (WSEvent, DataOutputStream))] {
+  // Players and corresponding WebSockets
+  val server = new EventSource[(String, WebSocket)] {
+    val listener = Listener(port)
     Listener(port)
         .foreach { case (socket, input) =>
           val out: DataOutputStream = new DataOutputStream(new WSOutputStream(socket))
-          // val in: DataInputStream = new DataInputStream(input)
 
           println("Waiting for connection string...")
-          // val data = in.readUTF
           val allData = input.foldLeft(Seq[String]())((acc, p) => acc ++ Seq[String](p))
           val data = {
             while(allData.eval.size < 1) {
@@ -57,15 +56,15 @@ class Session private(
         }
   }
 
-  // Only inputs from players
-  val inputStreams: Event[(String, WSEvent)] = server.map { (_, connection) =>
+  // Only inputs from players (PlayerName, Packet from player)
+  val inputStreams: Event[(String, Packet)] = server.map { (_, connection) =>
     val (name, (inputStream, _)) = connection
 
     (name, inputStream)
   }
 
-  // Only outputs to players
-  val outputStreams: Event[(String, DataOutputStream)] = server.map { (_, connection) =>
+  // Only outputs to players (PlayerName, WebSocket output)
+  val outputStreams: Event[(String, WebSocket)] = server.map { (_, connection) =>
     val (name, (_, outputStream)) = connection
 
     (name, outputStream)
@@ -81,7 +80,7 @@ class Session private(
       })
       .toMap
 
-  val moduleOutputs = module(inputs)
+  val moduleOutputs: Map[Player, Event[Packet]] = module(inputs)
 
   val outputs: Map[Player, PlayerOutput] = players
       .map({ player =>
