@@ -19,15 +19,13 @@ case class Listener(
   // TODO: Only send the WebSocket/String combo
   // on receiving a Connect message
 
-  println("Starting websocketserver") // TODO: remove this, just for debugging
   val server = WebSocketServer("/", port) {
     case Open(s) => {
       println("Socket opened!") // TODO: remove this, just for debugging
-      occur(s, None)
     }
     case Message(s, Text(str)) => {
       println("Received message: %s from socket %s".format(str, s))
-      occur(s, Some(str))
+      occur(s, str)
     }
     case Close(s) => // TODO: what to do when we close sockets?
     // TODO: log errors

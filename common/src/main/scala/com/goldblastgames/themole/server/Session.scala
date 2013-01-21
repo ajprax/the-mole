@@ -1,5 +1,9 @@
 package com.goldblastgames.themole.server
 
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.LinkedHashSet
+import scala.collection.mutable.Set
+
 import java.io.BufferedInputStream
 import java.io.InputStream
 import java.io.DataInputStream
@@ -7,6 +11,7 @@ import java.io.DataOutputStream
 
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
+import unfiltered.netty.websockets.WebSocket
 
 import com.goldblastgames.themole.Player
 import com.goldblastgames.themole.io.Connect
@@ -25,72 +30,68 @@ class Session private(
   val module: Map[Player, Event[Packet]] => Map[Player, Event[Packet]]
 ) {
 
-  // Players and corresponding WebSockets
-  val server = new EventSource[(String, WebSocket)] {
-    val listener = Listener(port)
-    Listener(port)
-        .foreach { case (socket, input) =>
-          val out: DataOutputStream = new DataOutputStream(new WSOutputStream(socket))
+  // Players and corresponding WebSockets are kept track of here.
+  // This is mutable!
+  val socketPlayers = new HashMap[WebSocket, Player]()
+  val playerSockets = new HashMap[Player, Set[WebSocket]]()
 
-          println("Waiting for connection string...")
-          val allData = input.foldLeft(Seq[String]())((acc, p) => acc ++ Seq[String](p))
-          val data = {
-            while(allData.eval.size < 1) {
-              Thread.sleep(1000)
+  val incomingPackets: EventSource[(Player, Packet)] =
+    new EventSource[(Player, Packet)] {
+      Listener(port).foreach {
+        case (socket, input) => {
+          val packet = deserialize(input)
+          packet match {
+            // If it's a connect message, add that player to our map
+            case Connect(playerName) => {
+              println("Connection string received from: %s".format(playerName))
+              val withName = players.filter(_.name == playerName)
+              if (withName.isEmpty) {
+                println("No such player with name: %s".format(playerName))
+              } else {
+                // add player to our map assuming only one player with that name
+                val player = withName(0)
+                socketPlayers(socket) = player
+                if (!playerSockets.contains(player)) {
+                  playerSockets(player) = new LinkedHashSet[WebSocket]()
+                }
+                playerSockets(player) += socket
+              }
             }
-            val curr = allData.eval
-            curr(0)
-          }
 
-          deserialize(data) match {
-            case Connect(name) => {
-              println("Player %s connected.".format(name))
-              occur((name, (input, out)))
-            }
-
-            case x => {
-              println("Invalid connection packet: %s".format(x.toString))
-              sys.error("Received a bad connection packet: %s".format(x.toString))
+            // for all other messages, simply occur it if the player is already
+            // in our map
+            case p: Packet => {
+              if (socketPlayers.contains(socket)) {
+                occur(socketPlayers(socket), p)
+              } else {
+                println("received message from unknown socket")
+              }
             }
           }
         }
-  }
+      }
+    }
 
-  // Only inputs from players (PlayerName, Packet from player)
-  val inputStreams: Event[(String, Packet)] = server.map { (_, connection) =>
-    val (name, (inputStream, _)) = connection
+  // Inputs to the server
+  val inputs: Map[Player, Event[Packet]] =
+    players.map(
+      player => {
+        val playerPackets: Event[Packet] = incomingPackets.map {
+          case (t, (play, pack)) if (play == player) => pack
+        }
+        (player, playerPackets)
+      }
+    ).toMap
 
-    (name, inputStream)
-  }
-
-  // Only outputs to players (PlayerName, WebSocket output)
-  val outputStreams: Event[(String, WebSocket)] = server.map { (_, connection) =>
-    val (name, (_, outputStream)) = connection
-
-    (name, outputStream)
-  }
-
-  val inputs: Map[Player, PlayerInput] = players
-      .map({ player =>
-        val input = inputStreams
-            .filter({ case (name, _) => name == player.name })
-            .map((_, x) => x._2)
-
-        (player, new PlayerInput(player.name, input))
-      })
-      .toMap
 
   val moduleOutputs: Map[Player, Event[Packet]] = module(inputs)
 
-  val outputs: Map[Player, PlayerOutput] = players
-      .map({ player =>
-        val output = outputStreams
-            .filter({ case (name, _) => name == player.name })
-            .map((_, x) => x._2)
-
-        (player, new PlayerOutput(player.name, output, moduleOutputs(player)))
-      })
-      .toMap
+  // Write outputs to server to the correct sockets
+  moduleOutputs.map {
+    case (play, packets) => {
+      packets.map((t, pack) => playerSockets(play).map(_.send(serialize(pack))))
+    }
+  }
 }
 
 object Session {
