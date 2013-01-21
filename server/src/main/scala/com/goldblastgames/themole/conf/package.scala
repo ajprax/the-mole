@@ -22,19 +22,19 @@ package object conf {
 
   def readPlayers(root: NodeSeq) = {
     val playerNodes = root \ "player"
+    val skillNodes = playerNodes \ "skills" \ "skill"
     val players: Seq[Player] = playerNodes.map { playerNode =>
       Player(
         (playerNode \ "@name").text,
         Nation.withName((playerNode \ "@camp").text),
         Nation.withName((playerNode \ "@allegiance").text),
-        // Dummy skills
-        Map((Skills.withName("InformationGathering") -> (1,10)),
-          (Skills.withName("Subterfuge") -> (1,10)),
-          (Skills.withName("Wetwork") -> (1,10)),
-          (Skills.withName("Sabotage") -> (1,10)),
-          (Skills.withName("Sexitude") -> (1,10)),
-          (Skills.withName("Stoicism") -> (1,10))
-        )
+        skillNodes.map({ skillNode =>
+          val name = (skillNode \ "@name").text
+          val min = Int.parse((skillNode \ "@min").text)
+          val max = Int.parse((skillNode \ "@max").text)
+
+          (Skills.withName(name), (min, max))
+        }).toMap
       )
     }
 
