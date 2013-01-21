@@ -13,7 +13,7 @@ case class MissionReward(
 
   override def toString = {
     if (!value.isEmpty)
-      "+%d %s".format(value, rewardType)
+      "+%d %s".format(value.get, rewardType)
     else
       ""
   }
