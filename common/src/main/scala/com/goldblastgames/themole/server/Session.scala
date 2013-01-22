@@ -2,13 +2,14 @@ package com.goldblastgames.themole.server
 
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.LinkedHashSet
-import scala.collection.mutable.Set
+import scala.collection.immutable.ListSet
 
 import java.io.BufferedInputStream
 import java.io.InputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 
+import com.github.oetzi.echo.core.Behaviour
 import com.github.oetzi.echo.core.Event
 import com.github.oetzi.echo.core.EventSource
 import unfiltered.netty.websockets.WebSocket
@@ -30,33 +31,41 @@ class Session private(
   val module: Map[Player, Event[Packet]] => Map[Player, Event[Packet]]
 ) {
 
+  val listener = Listener(port)
+
   // Players and corresponding WebSockets are kept track of here.
   // This is mutable!
   val socketPlayers = new HashMap[WebSocket, Player]()
-  val playerSockets = new HashMap[Player, Set[WebSocket]]()
+  // val playerSockets = new HashMap[Player, Behaviour[Set[WebSocket]]]()
+  val playerSockets: Map[Player, Behaviour[ListSet[WebSocket]]] =
+    players.map (player =>
+      {
+        val filteredConnect = listener.filter({x =>
+          val (socket, input) = x
+          deserialize(input) match {
+            case Connect(name) if name == player.name => {
+              socketPlayers(socket) = player
+              true
+            }
+            case _ => {
+              false
+            }
+          }
+        })
+        val newPlayerSockets = filteredConnect.map ({ case (_ ,(socket, _)) => socket })
+        val playerWebsockets = newPlayerSockets.foldLeft(new ListSet[WebSocket]()){(acc, sock) => acc + sock}
+        (player, playerWebsockets)
+      }
+    ).toMap
 
   val incomingPackets: EventSource[(Player, Packet)] =
     new EventSource[(Player, Packet)] {
-      Listener(port).foreach {
+      listener.foreach {
         case (socket, input) => {
+          println("received raw input: %s".format(input))
           val packet = deserialize(input)
           packet match {
-            // If it's a connect message, add that player to our map
-            case Connect(playerName) => {
-              println("Connection string received from: %s".format(playerName))
-              val withName = players.filter(_.name == playerName)
-              if (withName.isEmpty) {
-                println("No such player with name: %s".format(playerName))
-              } else {
-                // add player to our map assuming only one player with that name
-                val player = withName(0)
-                socketPlayers(socket) = player
-                if (!playerSockets.contains(player)) {
-                  playerSockets(player) = new LinkedHashSet[WebSocket]()
-                }
-                playerSockets(player) += socket
-              }
-            }
+            case Connect(playerName) => {}
 
             // for all other messages, simply occur it if the player is already
             // in our map
@@ -74,24 +83,32 @@ class Session private(
 
   // Inputs to the server
   val inputs: Map[Player, Event[Packet]] =
-    players.map(
-      player => {
-        val playerPackets: Event[Packet] = incomingPackets.map {
-          case (t, (play, pack)) if (play == player) => pack
-        }
-        (player, playerPackets)
+    players.map({ player =>
+      val playerPackets: Event[Packet] = incomingPackets.filter ({ myArg =>
+        val (play, _) = myArg
+        play == player
+      }).map {
+        case(_, (_, pack)) => pack
       }
-    ).toMap
+      (player, playerPackets)
+    }).toMap
 
 
   val moduleOutputs: Map[Player, Event[Packet]] = module(inputs)
 
   // Write outputs to server to the correct sockets
-  moduleOutputs.map {
-    case (play, packets) => {
-      packets.map((t, pack) => playerSockets(play).map(_.send(serialize(pack))))
+  // This is the part to debug
+  playerSockets.foreach {playersocketpair => {
+    val(player, sockets) = playersocketpair
+    val outgoing: Event[Packet] = moduleOutputs(player)
+    val sampled:Event[(Packet,ListSet[WebSocket])] = sockets.sample(outgoing)
+    sampled.map({(t, packetSocketPair) => {
+      val (packet, currSockets) = packetSocketPair
+      println("sending %s to %s".format(packet, currSockets))
+      currSockets.map(_.send(serialize(packet)))
     }
-  }
+    })
+  }}
 }
 
 object Session {
