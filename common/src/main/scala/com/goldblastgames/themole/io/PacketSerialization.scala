@@ -65,7 +65,7 @@ object PacketSerialization {
         return jsonFromPacket(missionInfoFields, p).toString
       }
       case p: ErrorMessage => {
-        return jsonFromPacket(missionInfoFields, p).toString
+        return jsonFromPacket(errorMessageFields, p).toString
       }
       case p => {
         throw new RuntimeException("Can't serialize Packet: %s".format(p))
