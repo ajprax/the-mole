@@ -94,20 +94,24 @@ class Session private(
     }).toMap
 
 
+  // Outputs from the server
   val moduleOutputs: Map[Player, Event[Packet]] = module(inputs)
 
   // Write outputs to server to the correct sockets
   // This is the part to debug
+
+  // For every packet going out to a player, send it to all of that
+  // player's websockets
   playerSockets.foreach {playersocketpair => {
     val(player, sockets) = playersocketpair
     val outgoing: Event[Packet] = moduleOutputs(player)
     val sampled:Event[(Packet,ListSet[WebSocket])] = sockets.sample(outgoing)
-    sampled.map({(t, packetSocketPair) => {
+    sampled.foreach(packetSocketPair => {
       val (packet, currSockets) = packetSocketPair
       println("sending %s to %s".format(packet, currSockets))
       currSockets.map(_.send(serialize(packet)))
     }
-    })
+    )
   }}
 }
 
