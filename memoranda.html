@@ -1,0 +1,236 @@
+<html>
+<head>
+<title>The Mole - Memoranda</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body {background-color:FFE4C2}
+p {color:black;font-family:Ieicester}
+h1 {color:black;font-family:Ieicester}
+</style>
+  <script type="text/javascript">
+    var svgNS = "http://www.w3.org/2000/svg"
+    var playerList = ["aaron",
+                      "clayton",
+                      "daisy",
+                      "franklin",
+                      "kane",
+                      "robert"]
+    var localPlayer = 0 // index of the local player, set on login
+    var localPlayerCamp = "America" // set on login
+    var incomingSenderList = ["Mission Center",playerList[localPlayer]]
+    var outgoingChannelList = ["All",localPlayerCamp]
+    var incomingChannelList = ["All",localPlayerCamp,playerList[localPlayer]]
+    for (player in playerList)
+    {
+        if (player != localPlayer)
+        {
+            incomingSenderList.push(playerList[player])
+            outgoingChannelList.push(playerList[player])
+        }
+    }
+    // TODO fill receivedMessages from websockets
+    var receivedMessages = [{"sender": "Mission Center", "channel": "aaron", "body": "A Mission has occurred", "type": "Message"},{"sender": "Robert", "channel": "aaron", "body": "trigonometry", "type": "Message"},{"sender": "Kane", "channel": "All", "body": "help, I'm trapped in a telephone booth", "type": "Message"},{"sender": "Franklin", "channel": "aaron", "body": "super secret info", "type": "Message"},{"sender": "aaron", "channel": "America", "body": "blope", "type": "Message"},{"sender": "Daisy", "channel": "America", "body": "America fuck yeah", "type": "Message"}, {"sender": "Clayton", "channel": "All", "body": "Das vedanya commrades", "type": "Message"}]
+    var headerTabs = ["Memoranda", "Dossier", "Mission"]
+    var tabWidths = [0, 120, 104]
+    var localTab = 2 // index of the current tab
+    
+    //TODO set server URL
+    var socket = new WebSocket("ws://localhost:2552")
+
+    socket.onopen = function(){
+      alert("socket opened")
+      alert("sending connect message")
+      var connectMessage = {"name": "daisy", "type": "Connect"}
+      socket.send(JSON.stringify(connectMessage))
+    }
+    socket.onclose = function(){
+        alert("socket closed")
+    }
+    socket.onmessage = function(evt){
+        if (evt.type = "Message")
+        {
+            receivedMessages.push(JSON.parse(evt.data))
+        }
+        if (msg.type = "DeadDrop")
+        {
+            var jsonDeadDrop = JSON.parse(evt.data)
+            receivedMessages.push({"type":"DeadDrop", "sender":"Dead Drop", "channel": localPlayerCamp, "body":jsonDeadDrop.body})
+        }
+    }
+
+   
+    function build()
+    {
+        buildHeaders()
+        buildChatOutgoing()
+        buildChatIncoming()
+        buildChatIncoming2()
+    }
+    
+    function buildHeaders()
+    {
+        var xCoord = 22
+        for (tab in headerTabs)
+        {
+            xCoord += tabWidths[tab]
+            var link = document.createElementNS(svgNS,"text");
+            link.setAttribute("id","link_" + headerTabs[tab])
+            link.setAttribute("x",xCoord)
+            link.setAttribute("y",29)
+            link.setAttribute("fill","black")
+            link.setAttribute("font-family","Ieicester")
+            link.setAttribute("font-size",20)
+            link.setAttribute("onclick","linkClick(evt)")
+            link.setAttribute("address",headerTabs[tab] + ".html")
+            link.setAttribute("style","cursor: pointer; cursor: hand;")
+            link.appendChild(document.createTextNode(headerTabs[tab]))
+            document.getElementById("headerSpace").appendChild(link)
+        }
+    }
+    
+    function buildChatOutgoing()
+    {
+        var titleDiv = document.createElement("div")
+        titleDiv.innerHTML = "Send to:" + "<br>"
+        document.getElementById("chatOutgoing").appendChild(titleDiv)
+        
+        var channelDiv = document.createElement("div")
+        var channelDivContents = ""
+        for (channel in outgoingChannelList)
+        {
+            channelDivContents = channelDivContents + "<input type='checkbox' name='" + outgoingChannelList[channel] + "'>" + outgoingChannelList[channel]
+        }
+        channelDiv.innerHTML = channelDivContents
+        document.getElementById("chatOutgoing").appendChild(channelDiv)
+        
+        var textDiv = document.createElement("div")
+        textDiv.innerHTML = "<textarea style='resize: none;' id='textInput' cols='50' rows='4'>"
+        document.getElementById("chatOutgoing").appendChild(textDiv)
+        
+        var submitDiv = document.createElement("div")
+        submitDiv.innerHTML = "<input type='button' value='Send Memo' onclick='textSubmit()'>"
+        document.getElementById("chatOutgoing").appendChild(submitDiv)
+    }
+    
+    function buildChatIncoming()
+    {
+        var titleDiv = document.createElement("div")
+        titleDiv.innerHTML = "Receive memos sent by:" + "<br>"
+        document.getElementById("chatIncoming").appendChild(titleDiv)
+        
+        var channelDiv = document.createElement("div")
+        var channelDivContents = ""
+        for (channel in incomingSenderList)
+        {
+            channelDivContents = channelDivContents + "<input type='checkbox' name='" + incomingSenderList[channel] + "'>" + incomingSenderList[channel]
+        }
+        channelDiv.innerHTML = channelDivContents
+        document.getElementById("chatIncoming").appendChild(channelDiv)
+    }
+    
+    function buildChatIncoming2()
+    {        
+        var titleDiv2 = document.createElement("div")
+        titleDiv2.innerHTML = "Receive memos sent to:" + "<br>"
+        document.getElementById("chatIncoming2").appendChild(titleDiv2)
+        
+        var channelDiv2 = document.createElement("div")
+        var channelDiv2Contents = ""
+        for (channel in incomingChannelList)
+        {
+            channelDiv2Contents = channelDiv2Contents + "<input type='checkbox' name='" + incomingChannelList[channel] + "'>" + incomingChannelList[channel]
+        }
+        channelDiv2.innerHTML = channelDiv2Contents
+        document.getElementById("chatIncoming2").appendChild(channelDiv2)
+        
+        var submitDiv = document.createElement("div")
+        submitDiv.innerHTML = "<input type='button' value='Set Filters' onclick='filterSubmit()'>"
+        document.getElementById("chatIncoming2").appendChild(submitDiv)
+        
+        var textDiv = document.createElement("div")
+        textDiv.innerHTML = "<textarea style='resize: none;' id='textInput' cols='100' rows='10' disabled>"
+        document.getElementById("chatIncoming2").appendChild(textDiv)
+    }
+    
+    function textSubmit()
+    {
+        var body = document.forms.chatInputForm.textInput.value
+        var channelList = outgoingChannelList
+        var channels = []
+        
+        for (channel in channelList)
+        {
+            if (document.forms.chatInputForm[channelList[channel]].checked)
+            {
+                channels.push(document.forms.chatInputForm[channelList[channel]].name)
+            }
+        }
+        
+        var send = confirm("Send: " + body + "\nTo: " + channels)
+        if (send)
+        {
+            for (channel in channels)
+            {
+                var jsonSubmit = {"sender": playerList[localPlayer], "channel": channels[channel], "body": body, "type": "Message"}
+                socket.send(JSON.stringify(jsonSubmit))
+                // TODO send jsonSubmit through websocket
+                // done? remove alerts
+                alert(jsonSubmit.sender + " " + jsonSubmit.channel + " " + jsonSubmit.body + " " + jsonSubmit.type)
+            }
+            alert("sent")
+            document.forms.chatInputForm.textInput.value = ""
+        }
+    }
+    
+    function filterSubmit()
+    {
+        var senderChannels = []
+        var receiveChannels = []
+        
+        for (channel in incomingSenderList)
+        {
+            if (document.forms.chatOutputForm[incomingSenderList[channel]].checked)
+            {
+                senderChannels.push(document.forms.chatOutputForm[incomingSenderList[channel]].name)
+            }
+        }
+        for (channel in incomingChannelList)
+        {
+            if (document.forms.chatOutputForm2[incomingChannelList[channel]].checked)
+            {
+                receiveChannels.push(document.forms.chatOutputForm2[incomingChannelList[channel]].name)
+            }
+        }
+        
+        alert("filter set to:\n" + senderChannels + receiveChannels)
+        var messages = ""
+        for (message in receivedMessages)
+        {
+            if (senderChannels.indexOf(receivedMessages[message].sender) != -1)
+            {
+                messages = messages + "<" + receivedMessages[message].sender + "> to <" + receivedMessages[message].channel + ">: " + receivedMessages[message].body + "\n"
+            }
+            else if (receiveChannels.indexOf(receivedMessages[message].channel) != -1)
+            {
+                messages = messages + "<" + receivedMessages[message].sender + "> to <" + receivedMessages[message].channel + ">: " + receivedMessages[message].body + "\n" 
+            }
+        }
+        document.forms.chatOutputForm2.textInput.value = messages
+    }
+    
+    function linkClick(evt)
+    {
+        var target = evt.target
+        var address = target.getAttribute("address")
+        window.location = address
+    }
+    
+</script>
+</head>
+<body onload="build();">
+<svg id="headerSpace" height="50" width="800" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg>
+<form name="chatInputForm" method="post" id="chatOutgoing" onsubmit="textSubmit()"></form>
+<form name="chatOutputForm" method="post" id="chatIncoming" onsubmit="filterSubmit()"></form>
+<form name="chatOutputForm2" method="post" id="chatIncoming2" onsubmit="filterSubmit()"></form>
+</body>
+</html>
