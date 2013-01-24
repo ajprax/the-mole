@@ -27,7 +27,8 @@ case class Listener(
       println("Received message: %s from socket %s".format(str, s))
       occur(s, str)
     }
-    case Close(s) => // TODO: what to do when we close sockets?
+    case Close(s) =>
+    // TODO: close sockets correctly
     // TODO: log errors
     case Error(s,e) => println("error %s".format(e.getMessage))
   }

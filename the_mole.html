@@ -1,0 +1,823 @@
+<html>
+<head>
+<title>The Mole - Mission</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body {background-color:FFE4C2}
+p {color:black;font-family:Ieicester}
+h1 {color:black;font-family:Ieicester}
+</style>
+<script type="text/javascript">
+    var svgNS = "http://www.w3.org/2000/svg"
+    var playerList = ["Aaron",
+                      "Clayton",
+                      "Daisy",
+                      "Franklin",
+                      "Kane",
+                      "Robert"] // index 0-2 are America, 3-5 are USSR
+    var localPlayer = 0 // index of the local player as determined by login information
+    var localPlayerCamp = "America" // set on login
+    var skillList = ["Info Gathering",
+                     "Subterfuge",
+                     "Wetwork",
+                     "Sabotage",
+                     "Sexitude",
+                     "Stoicism"]
+    var colorList = ["#1BBA0D","#AC0DBA","#BAAC0D","#0D1BBA","#BA0D1B","#0DBAAC"]
+    var coefList = [1, -1, 1, -1, 1, -1] // sets the direction each skill grows
+    var yCoordList = [0,0,50,50,100,100]
+	var regVal = 2 // how many points will regenerate before the next mission
+    var bonLists = [[0,1,1,0,2,2], // unsubmitted
+                    [0,0,0,0,0,0], // submitted to America
+                    [0,1,0,0,0,0]] // submitted to USSR
+    var curLists = [[5,2,4,-1,8,4], // unsubmitted
+                    [0,0,0,3,0,0], // submitted to America
+                    [0,2,0,0,0,0]] // submitted to USSR
+    var maxLists = [[9,2,7,3,8,5], // unsubmitted
+                    [0,0,0,3,0,0], // submitted to America
+                    [0,2,0,0,0,0]] // submitted to USSR
+    var maxMaxSub = Math.max.apply(Math, [Math.max.apply(Math, maxLists[1]), Math.max.apply(Math, maxLists[2])])
+    var maxMaxRows = [Math.max.apply(Math, [maxLists[0][0], maxLists[0][1]]), Math.max.apply(Math, [maxLists[0][2], maxLists[0][3]]), Math.max.apply(Math, [maxLists[0][4], maxLists[0][5]])]
+    var rowYOffsets = [0, 0, 
+                       Math.floor(maxMaxRows[0] / 4), Math.floor(maxMaxRows[0] / 4),
+                       Math.floor(maxMaxRows[0] / 4) + Math.floor(maxMaxRows[1] / 4), Math.floor(maxMaxRows[0] / 4) + Math.floor(maxMaxRows[1] / 4)]
+    if (rowYOffsets[2] == maxMaxRows[0] / 4)
+    {
+        rowYOffsets[2] -= 1
+        rowYOffsets[3] -= 1
+        rowYOffsets[4] -= 1
+        rowYOffsets[5] -= 1
+    }
+    if (rowYOffsets[4] == rowYOffsets[2] + maxMaxRows[1] / 4)
+    {
+        rowYOffsets[4] -= 1
+        rowYOffsets[5] -= 1
+    }
+    
+    var camp = 1
+    var submittedSkillAmerica = ""
+    var submittedSkillUSSR = ""
+    var submittedValueAmerica = 0
+    var submittedValueUSSR = 0
+    var otherCamp = [0,2,1]
+    
+    var incomingSenderList = ["Mission Center",playerList[localPlayer]]
+    var outgoingChannelList = ["All",localPlayerCamp]
+    var incomingChannelList = ["All",localPlayerCamp,playerList[localPlayer]]
+    for (player in playerList)
+    {
+        if (player != localPlayer)
+        {
+            incomingSenderList.push(playerList[player])
+            outgoingChannelList.push(playerList[player])
+        }
+    }
+    // TODO fill receivedMessages from websockets
+    var receivedMessages = [{"sender": "Mission Center", "channel": "Aaron", "body": "A Mission has occurred", "type": "Message"},{"sender": "Robert", "channel": "Aaron", "body": "trigonometry", "type": "Message"},{"sender": "Kane", "channel": "All", "body": "help, I'm trapped in a telephone booth", "type": "Message"},{"sender": "Franklin", "channel": "Aaron", "body": "super secret info", "type": "Message"},{"sender": "Aaron", "channel": "America", "body": "blope", "type": "Message"},{"sender": "Daisy", "channel": "America", "body": "America fuck yeah", "type": "Message"}, {"sender": "Clayton", "channel": "All", "body": "Das vedanya commrades", "type": "Message"}]
+    
+    var dossierBonLists = [[6,5,4,3,2,1],
+                   [2,2,1,1,0,0],
+                   [2,4,6,3,2,0],
+                   [1,3,5,3,1,0],
+                   [1,1,1,1,1,1],
+                   [2,4,2,4,2,4]]
+    var dossierMaxLists = [[12,11,10,9,8,7],
+                   [6,5,4,3,2,1],
+                   [12,10,8,6,4,2],
+                   [11,9,7,5,3,1],
+                   [12,9,6,3,6,9],
+                   [12,8,4,8,12,8]]
+    var playerGambits = [["All in", "Double Down"],
+                         ["Truthiness", "Radio Jamming"],
+                         ["Censorship", "Multitasking"],
+                         ["Secretive", "Analysis"],
+                         ["High Clearance", "Multitasking"],
+                         ["Well Connected", "Forgery"]]
+    
+    // validate user before opening the socket
+    //TODO set server URL
+    var socket = new WebSocket("ws://localhost:2552")
+    socket.onopen = function(){
+      var connectMessage = {"name": "daisy", "type": "Connect"}
+      socket.send(JSON.stringify(connectMessage))
+      alert("socket opened")
+    }
+    var retries = 5
+    socket.onclose = function(){
+        if (retries > 0 )
+        {
+            retries--
+            socket = new WebSocket("ws://localhost:2552")
+        }
+        else
+        {
+            alert("socket closed.  check your connection")
+        }
+    }
+    socket.onmessage = function(msg){
+        var jsonMessage = JSON.parse(msg.data)
+        if (jsonMessage.type == "Message")
+        {
+            receivedMessages.push(jsonMessage)
+            filterSubmit()
+        }
+        if (jsonMessage.type == "DeadDrop")
+        {
+            receivedMessages.push({"type":"DeadDrop", "sender":"Dead Drop", "channel": localPlayerCamp, "body": jsonMessage.body})
+            filterSubmit()
+        }
+        if (jsonMessage.type == "SkillSetup")
+        {
+            curLists[0] = jsonMessage.bonusValues
+            curLists[1] = [0,0,0,0,0,0]
+            curLists[2] = [0,0,0,0,0,0]
+            curLists[0] = jsonMessage.currentValues
+            curLists[1] = [0,0,0,0,0,0]
+            curLists[2] = [0,0,0,0,0,0]
+            maxLists[0] = jsonMessage.maxValues
+            maxLists[1] = [0,0,0,0,0,0]
+            maxLists[2] = [0,0,0,0,0,0]
+            buildSkills()
+        }
+        if (jsonMessage.type == "Player Info")
+        {
+            //TODO parse and store player information
+            //buildPlayerLinks()
+        }
+    }
+    
+    function empty(target)
+    {
+        var svg = document.getElementById(target)
+        var children = svg.childNodes
+        
+        if (svg.hasChildNodes())
+        {
+            svg.removeChild(children[0])
+            empty(target)
+        }
+    }
+    
+    function build()
+    {
+        buildSkills()
+        buildChatOutgoing()
+        buildChatIncoming()
+        buildChatIncoming2()
+        buildPlayerLinks()
+    }
+    
+    function buildSkills()
+    {
+        maxMaxSub = Math.max.apply(Math, [Math.max.apply(Math, maxLists[1]), Math.max.apply(Math, maxLists[2])])
+        
+        empty("skillSpace")
+        // TODO make holes always display your max of each unsubmitted skill
+        // only change curLists on blockclick
+        for (var i=0; i<6; i++) // picks the skill by index from skillList
+        {
+            for (var j=1; j<13; j++) // picks the value from 1-12
+            {
+                for (var k=0; k<3; k++) // picks the three locations
+                {
+                    if (j > curLists[k][i] && j <= maxLists[k][i])
+                    {
+                        createHole(i,j,k)
+                    }
+                    if (j > curLists[k][i] && j <= curLists[k][i] + regVal && j <= maxLists[k][i])
+                    {
+                        createFiller(i,j,k)
+                    }
+                    if (j <= curLists[k][i])
+                    {
+                        createBox(i,j,k)
+                    }
+                    createBonus(i,k)
+                }
+            }
+            createLabel(i)
+        }
+        createCampButtons()
+        
+        for (var k=0;k<3;k++)
+        {
+            for (var j=0;j<6;j++)
+            {
+                curLists[k][j] = curLists[k][j] * 1
+                maxLists[k][j] = maxLists[k][j] * 1
+                bonLists[k][j] = bonLists[k][j] * 1
+            }
+        }
+        submittedSkillAmerica = skillList[maxLists[1].indexOf(Math.max.apply(Math,maxLists[1]))]
+        submittedSkillUSSR = skillList[maxLists[2].indexOf(Math.max.apply(Math,maxLists[2]))]
+        submittedValueAmerica = Math.max.apply(Math,maxLists[1])
+        submittedValueUSSR = Math.max.apply(Math,maxLists[2])
+    }
+    
+    function createHole(skill, value, location)
+    {
+        if (location == 0)
+        {
+            var xValue = value % 4
+            if (xValue == 0)
+            {
+                xValue = 4
+            }
+            var yValue = Math.floor(value / 4)
+            if (yValue == value / 4)
+            {
+                yValue -= 1
+            }
+            var xCoord = coefList[skill] * 50 * xValue + 390
+            var yCoord = yCoordList[skill] + 50 * yValue + 50 * rowYOffsets[skill]
+        }
+        
+        var hole = document.createElementNS(svgNS,"rect");
+        hole.setAttribute("id","hole_" + skill + "_" + value + "_" + location)
+        hole.setAttribute("x",xCoord + 10)
+        hole.setAttribute("y",yCoord + 10)
+        hole.setAttribute("width",30)
+        hole.setAttribute("height",30)
+        hole.setAttribute("fill","none")
+        hole.setAttribute("stroke","black")
+        hole.setAttribute("stroke-width",2)
+        hole.setAttribute("value",value)
+        hole.setAttribute("skill",skill)
+        hole.setAttribute("location",location)
+        hole.setAttribute("onclick","boxClick(evt)")
+        document.getElementById("skillSpace").appendChild(hole)
+    }
+    
+    function createFiller(skill, value, location)
+    {
+        if (location == 0)
+        {
+            var xValue = value % 4
+            if (xValue == 0)
+            {
+                xValue = 4
+            }
+            var yValue = Math.floor(value / 4)
+            if (yValue == value / 4)
+            {
+                yValue -= 1
+            }
+            var xCoord = coefList[skill] * 50 * xValue + 390
+            var yCoord = yCoordList[skill] + 50 * yValue + 50 * rowYOffsets[skill]
+        }
+        
+        var filler = document.createElementNS(svgNS,"rect");
+        filler.setAttribute("id","filler_" + skill + "_" + value + "_" + location)
+        filler.setAttribute("x",xCoord+13)
+        filler.setAttribute("y",yCoord+13)
+        filler.setAttribute("width",24)
+        filler.setAttribute("height",24)
+        filler.setAttribute("fill",colorList[skill])
+        filler.setAttribute("stroke","none")
+        filler.setAttribute("value",value)
+        filler.setAttribute("skill",skill)
+        filler.setAttribute("location",location)
+        filler.setAttribute("onclick","boxClick(evt)")
+        filler.setAttribute("style","cursor: pointer; cursor: hand;")
+        document.getElementById("skillSpace").appendChild(filler)
+    }
+    
+    function createBox(skill, value, location)
+    {
+        if (location == 0)
+        {
+            var xValue = value % 4
+            if (xValue == 0)
+            {
+                xValue = 4
+            }
+            var yValue = Math.floor(value / 4)
+            if (yValue == value / 4)
+            {
+                yValue -= 1
+            }
+            var xCoord = coefList[skill] * 50 * xValue + 390
+            var yCoord = yCoordList[skill] + 50 * yValue + 50 * rowYOffsets[skill]
+        }
+        else
+        {
+            var xCoord = 190 + 50 * value
+            var yCoord = 500 + 80 * (location -1)
+        }
+            
+        var box = document.createElementNS(svgNS,"rect");
+        box.setAttribute("id","box_" + skill + "_" + value + "_" + location)
+        box.setAttribute("x",xCoord+3)
+        box.setAttribute("y",yCoord+3)
+        box.setAttribute("width",44)
+        box.setAttribute("height",44)
+        box.setAttribute("fill",colorList[skill])
+        box.setAttribute("value",value)
+        box.setAttribute("skill",skill)
+        box.setAttribute("location",location)
+        box.setAttribute("onclick","boxClick(evt)")
+        box.setAttribute("style","cursor: pointer; cursor: hand;")
+        document.getElementById("skillSpace").appendChild(box)
+    }
+    
+    function createBonus(skill, location)
+    {
+        var bonus = document.createElementNS(svgNS,"text");
+        
+        if (bonLists[location][skill] != 0)
+        {
+            if (location == 0)
+            {
+                var yCoord = yCoordList[skill] + 50 * rowYOffsets[skill]
+                if (coefList[skill] == 1)
+                {
+                    var xCoord = 395
+                    bonus.appendChild(document.createTextNode(bonLists[0][skill] + "+"))
+                }
+                else
+                {
+                    var xCoord = 367
+                    bonus.appendChild(document.createTextNode("+" + bonLists[0][skill]))
+                }
+            }
+            else
+            {
+                var yCoord = 420 + 80 * location
+                var xCoord = 190
+                bonus.appendChild(document.createTextNode(bonLists[location][skill] + "+"))
+            }
+        
+            bonus.setAttribute("id","bonus_" + skill)
+            bonus.setAttribute("x",xCoord + 22)
+            bonus.setAttribute("y",yCoord + 29)
+            bonus.setAttribute("fill","black")
+            bonus.setAttribute("font-family","Ieicester")
+            bonus.setAttribute("font-size",20)
+    
+            document.getElementById("skillSpace").appendChild(bonus)
+        }
+    }
+    
+    function createLabel(skill)
+    {
+        if (coefList[skill] == -1)
+        {
+            var xCoord = 0
+        }
+        else
+        {
+            var xCoord = 640
+        }
+        var yCoord = yCoordList[skill] + 50 * rowYOffsets[skill]
+        var label = document.createElementNS(svgNS,"text");
+        label.setAttribute("id","label_" + skill)
+        label.setAttribute("x",xCoord + 22)
+        label.setAttribute("y",yCoord + 29)
+        label.setAttribute("fill","black")
+        label.setAttribute("font-family","Ieicester")
+        label.setAttribute("font-size",20)
+        label.appendChild(document.createTextNode(skillList[skill]))
+        document.getElementById("skillSpace").appendChild(label)
+    }
+    
+    function createCampButtons()
+	{
+	    var americaButton = document.createElementNS(svgNS,"rect")
+		americaButton.setAttribute("id","americaButton")
+		americaButton.setAttribute("x",50)
+		americaButton.setAttribute("y",490)
+		americaButton.setAttribute("width",150)
+		americaButton.setAttribute("height",68)
+		americaButton.setAttribute("rx",12)
+		americaButton.setAttribute("ry",12)
+	    americaButton.setAttribute("fill","blue")
+		americaButton.setAttribute("stroke","black")
+		americaButton.setAttribute("stroke-width",2)
+		americaButton.setAttribute("onclick","camp = 1")
+        americaButton.setAttribute("style","cursor: pointer; cursor: hand;")
+		var americaText = document.createElementNS(svgNS,"text")
+		americaText.setAttribute("id","americaText")
+		americaText.setAttribute("x",57)
+		americaText.setAttribute("y",533)
+		americaText.setAttribute("fill","black")
+		americaText.setAttribute("font-family","Ieicester")
+		americaText.setAttribute("font-size",35)
+        americaText.setAttribute("onclick","camp = 1")
+        americaText.setAttribute("style","cursor: pointer; cursor: hand;")
+		americaText.appendChild(document.createTextNode("America"))
+		document.getElementById("skillSpace").appendChild(americaButton)
+		document.getElementById("skillSpace").appendChild(americaText)
+			
+	    var USSRButton = document.createElementNS(svgNS,"rect")
+		USSRButton.setAttribute("id","USSRButton")
+		USSRButton.setAttribute("x",50)
+		USSRButton.setAttribute("y",570)
+		USSRButton.setAttribute("width",150)
+		USSRButton.setAttribute("height",68)
+		USSRButton.setAttribute("rx",12)
+		USSRButton.setAttribute("ry",12)
+	    USSRButton.setAttribute("fill","red")
+		USSRButton.setAttribute("stroke","black")
+		USSRButton.setAttribute("stroke-width",2)
+		USSRButton.setAttribute("onclick","camp = 2")
+        USSRButton.setAttribute("style","cursor: pointer; cursor: hand;")
+		var USSRText = document.createElementNS(svgNS,"text")
+		USSRText.setAttribute("id","USSRText")
+		USSRText.setAttribute("x",85)
+		USSRText.setAttribute("y",613)
+		USSRText.setAttribute("fill","black")
+		USSRText.setAttribute("font-family","Ieicester")
+		USSRText.setAttribute("font-size",35)
+        USSRText.setAttribute("onclick","camp = 2")
+        USSRText.setAttribute("style","cursor: pointer; cursor: hand;")
+		USSRText.appendChild(document.createTextNode("USSR"))
+		document.getElementById("skillSpace").appendChild(USSRButton)
+		document.getElementById("skillSpace").appendChild(USSRText)
+	
+        var skillSubmitButton = document.createElementNS(svgNS,"rect")
+        skillSubmitButton.setAttribute("id","skillSubmitButton")
+		skillSubmitButton.setAttribute("x",249 + 50*maxMaxSub)
+		skillSubmitButton.setAttribute("y",530)
+		skillSubmitButton.setAttribute("width",150)
+		skillSubmitButton.setAttribute("height",68)
+		skillSubmitButton.setAttribute("rx",12)
+		skillSubmitButton.setAttribute("ry",12)
+	    skillSubmitButton.setAttribute("fill","#FFE4C2")
+		skillSubmitButton.setAttribute("stroke","black")
+		skillSubmitButton.setAttribute("stroke-width",2)
+		skillSubmitButton.setAttribute("onclick","skillSubmit()")
+        skillSubmitButton.setAttribute("style","cursor: pointer; cursor: hand;")
+        var skillSubmitText = document.createElementNS(svgNS,"text")
+		skillSubmitText.setAttribute("id","skillSubmitText")
+		skillSubmitText.setAttribute("x",253 + 50*maxMaxSub)
+		skillSubmitText.setAttribute("y",570)
+		skillSubmitText.setAttribute("fill","black")
+		skillSubmitText.setAttribute("font-family","Ieicester")
+		skillSubmitText.setAttribute("font-size",20)
+        skillSubmitText.setAttribute("onclick","skillSubmit()")
+        skillSubmitText.setAttribute("style","cursor: pointer; cursor: hand;")
+		skillSubmitText.appendChild(document.createTextNode("Submit Skills"))
+        document.getElementById("skillSpace").appendChild(skillSubmitButton)
+		document.getElementById("skillSpace").appendChild(skillSubmitText)
+    }
+    
+    function boxClick(evt)
+    {
+        var shape = evt.target
+        var skill = shape.getAttribute("skill")
+        var value = shape.getAttribute("value")
+        var location = shape.getAttribute("location")
+        
+        if (location == 0)
+        {
+            var maxSubmitted = Math.max.apply(Math,maxLists[camp])
+            var curSubmitted = Math.max.apply(Math,curLists[camp])
+            var currentSkill = maxLists[camp].indexOf(maxSubmitted)
+            
+            curLists[0][skill] = curLists[0][skill] - value
+            maxLists[0][skill] = maxLists[0][skill] - value
+            if (curLists[camp][skill] != 0)
+            {
+                curLists[camp][skill] = 1*curLists[camp][skill] + 1*value
+                maxLists[camp][skill] = 1*maxLists[camp][skill] + 1*value
+            }
+            else
+            {
+                for (var i=0; i<6; i++)
+                {
+                    curLists[0][i] = curLists[0][i] + 1*curLists[camp][i]
+                    maxLists[0][i] = maxLists[0][i] + 1*maxLists[camp][i]
+                    curLists[camp][i] = 0
+                    maxLists[camp][i] = 0
+                    bonLists[camp][i] = 0
+                }
+                curLists[camp][skill] = value
+                maxLists[camp][skill] = value
+                bonLists[camp][skill] = bonLists[0][skill]
+            }
+// not working; intended to allow "regen" boxes in the submission area
+//            if (curLists[0][skill] < 0)
+//            {
+//                curLists[camp][skill] = maxLists[camp][skill] + 1*curLists[0][skill]
+//            }
+        }
+        else
+        {
+            if (location == camp)
+            {
+                var from = camp
+            }
+            else
+            {
+                var from = otherCamp[camp]
+            }
+            curLists[0][skill] = curLists[0][skill] + 1*curLists[from][skill] - value + 1
+            maxLists[0][skill] = maxLists[0][skill] + 1*maxLists[from][skill] - value + 1
+            curLists[from][skill] = value - 1
+            maxLists[from][skill] = value - 1
+            if (curLists[from][skill] == 0)
+            {
+                bonLists[from][skill] = 0
+            }
+        }
+        buildSkills()
+    }
+        
+    function skillSubmit()
+    {
+        var AmericaSubbed = Math.max.apply(Math, curLists[1])
+        var USSRSubbed = Math.max.apply(Math, curLists[2])
+        if (AmericaSubbed != 0)
+        {
+            submittedSkillAmerica = skillList[curLists[1].indexOf(AmericaSubbed)]
+            submittedValueAmerica = AmericaSubbed + 1*bonLists[1][curLists[1].indexOf(AmericaSubbed)]
+        }
+        if (USSRSubbed != 0)
+        {
+            submittedSkillUSSR = skillList[curLists[2].indexOf(USSRSubbed)]
+            submittedValueUSSR = USSRSubbed + 1*bonLists[2][curLists[2].indexOf(USSRSubbed)]
+        }
+        socket.send(JSON.stringify({"sender": playerList[localPlayer], "camp": "America", "skill": submittedSkillAmerica, "amount": submittedValueAmerica}))
+        socket.send(JSON.stringify({"sender": playerList[localPlayer], "camp": "USSR", "skill": submittedSkillUSSR, "amount": submittedValueUSSR}))
+        alert("Skills submitted:\nAmerica: " + submittedSkillAmerica + ": " + submittedValueAmerica + "\nUSSR: " + submittedSkillUSSR + ": " + submittedValueUSSR)
+    }
+    
+    function buildChatOutgoing()
+    {
+        var titleDiv = document.createElement("div")
+        titleDiv.innerHTML = "Send to:" + "<br>"
+        document.getElementById("chatOutgoing").appendChild(titleDiv)
+        
+        var channelDiv = document.createElement("div")
+        var channelDivContents = ""
+        for (channel in outgoingChannelList)
+        {
+            channelDivContents = channelDivContents + "<input type='checkbox' name='" + outgoingChannelList[channel] + "'>" + outgoingChannelList[channel]
+        }
+        channelDiv.innerHTML = channelDivContents
+        document.getElementById("chatOutgoing").appendChild(channelDiv)
+        
+        var textDiv = document.createElement("div")
+        textDiv.innerHTML = "<textarea style='resize: none;' id='textInput' cols='50' rows='4'>"
+        document.getElementById("chatOutgoing").appendChild(textDiv)
+        
+        var submitDiv = document.createElement("div")
+        submitDiv.innerHTML = "<input type='button' value='Send Memo' onclick='textSubmit()'>"
+        document.getElementById("chatOutgoing").appendChild(submitDiv)
+    }
+    
+    function buildChatIncoming()
+    {
+        var titleDiv = document.createElement("div")
+        titleDiv.innerHTML = "Receive memos sent by:" + "<br>"
+        document.getElementById("chatIncoming").appendChild(titleDiv)
+        
+        var channelDiv = document.createElement("div")
+        var channelDivContents = ""
+        for (channel in incomingSenderList)
+        {
+            channelDivContents = channelDivContents + "<input type='checkbox' name='" + incomingSenderList[channel] + "'>" + incomingSenderList[channel]
+        }
+        channelDiv.innerHTML = channelDivContents
+        document.getElementById("chatIncoming").appendChild(channelDiv)
+    }
+    
+    function buildChatIncoming2()
+    {        
+        var titleDiv2 = document.createElement("div")
+        titleDiv2.innerHTML = "Receive memos sent to:" + "<br>"
+        document.getElementById("chatIncoming2").appendChild(titleDiv2)
+        
+        var channelDiv2 = document.createElement("div")
+        var channelDiv2Contents = ""
+        for (channel in incomingChannelList)
+        {
+            channelDiv2Contents = channelDiv2Contents + "<input type='checkbox' name='" + incomingChannelList[channel] + "'>" + incomingChannelList[channel]
+        }
+        channelDiv2.innerHTML = channelDiv2Contents
+        document.getElementById("chatIncoming2").appendChild(channelDiv2)
+        
+        var submitDiv = document.createElement("div")
+        submitDiv.innerHTML = "<input type='button' value='Set Filters' onclick='filterSubmit()'>"
+        document.getElementById("chatIncoming2").appendChild(submitDiv)
+        
+        var textDiv = document.createElement("div")
+        textDiv.innerHTML = "<textarea style='resize: none;' id='textInput' cols='100' rows='10' disabled>"
+        document.getElementById("chatIncoming2").appendChild(textDiv)
+    }
+    
+    function textSubmit()
+    {
+        var body = document.forms.chatInputForm.textInput.value
+        var channelList = outgoingChannelList
+        var channels = []
+        
+        for (channel in channelList)
+        {
+            if (document.forms.chatInputForm[channelList[channel]].checked)
+            {
+                channels.push(document.forms.chatInputForm[channelList[channel]].name)
+            }
+        }
+        
+        var send = confirm("Send: " + body + "\nTo: " + channels)
+        if (send)
+        {
+            for (channel in channels)
+            {
+                var jsonSubmit = {"sender": playerList[localPlayer], "channel": channels[channel], "body": body, "type": "Message"}
+                socket.send(JSON.stringify(jsonSubmit))
+            }
+            document.forms.chatInputForm.textInput.value = ""
+        }
+    }
+    
+    function filterSubmit()
+    {
+        var senderChannels = []
+        var receiveChannels = []
+        
+        for (channel in incomingSenderList)
+        {
+            if (document.forms.chatOutputForm[incomingSenderList[channel]].checked)
+            {
+                senderChannels.push(document.forms.chatOutputForm[incomingSenderList[channel]].name)
+            }
+        }
+        for (channel in incomingChannelList)
+        {
+            if (document.forms.chatOutputForm2[incomingChannelList[channel]].checked)
+            {
+                receiveChannels.push(document.forms.chatOutputForm2[incomingChannelList[channel]].name)
+            }
+        }
+        
+        //alert("filter set to:\n" + senderChannels + receiveChannels)
+        var messages = ""
+        for (message in receivedMessages)
+        {
+            if (senderChannels.indexOf(receivedMessages[message].sender) != -1)
+            {
+                messages = messages + "<" + receivedMessages[message].sender + "> to <" + receivedMessages[message].channel + ">: " + receivedMessages[message].body + "\n"
+            }
+            else if (receiveChannels.indexOf(receivedMessages[message].channel) != -1)
+            {
+                messages = messages + "<" + receivedMessages[message].sender + "> to <" + receivedMessages[message].channel + ">: " + receivedMessages[message].body + "\n" 
+            }
+        }
+        document.forms.chatOutputForm2.textInput.value = messages
+    }
+    
+    function buildPlayerLinks()
+    {
+        var buildPlayersList = []
+        for (player in playerList)
+        {
+            if (player != localPlayer)
+            {
+                buildPlayersList.push([playerList[player]])
+            }
+        }
+        for (player in buildPlayersList)
+        {
+            yCoord = 50 * player
+            var playerLink = document.createElementNS(svgNS,"text");
+            playerLink.setAttribute("id","player_" + buildPlayersList[player])
+            playerLink.setAttribute("x",22)
+            playerLink.setAttribute("y",yCoord + 29)
+            playerLink.setAttribute("fill","black")
+            playerLink.setAttribute("font-family","Ieicester")
+            playerLink.setAttribute("font-size",20)
+            playerLink.setAttribute("onclick","playerClick(evt)")
+            for (player2 in playerList)
+            {
+                if (playerList[player2] == buildPlayersList[player])
+                {
+                    playerLink.setAttribute("player",player2)
+                }
+            }
+            playerLink.setAttribute("style","cursor: pointer; cursor: hand;")
+            playerLink.appendChild(document.createTextNode(buildPlayersList[player]))
+            document.getElementById("playerLinkSpace").appendChild(playerLink)
+        }
+    }
+    
+    function buildPlayerInfo(player)
+    {
+        if (playerGambits[player].indexOf("Secretive") == -1)
+        {
+            buildDossierSkills(player)
+        }
+        else
+        {
+            var secretive = document.createElementNS(svgNS,"text")
+            secretive.setAttribute("id","secretive")
+            secretive.setAttribute("x",152)
+            secretive.setAttribute("y",349)
+            secretive.setAttribute("fill","black")
+            secretive.setAttribute("font-family","Ieicester")
+            secretive.setAttribute("font-size",60)
+            secretive.setAttribute("transform", "rotate(45 400,225)")
+            secretive.appendChild(document.createTextNode("Top Secret"))
+            document.getElementById("playerInfoSpace").appendChild(secretive)
+        }
+        
+        var title = document.createElementNS(svgNS,"text");
+        title.setAttribute("id","title")
+        title.setAttribute("x",202)
+        title.setAttribute("y",49)
+        title.setAttribute("fill","black")
+        title.setAttribute("font-family","Ieicester")
+        title.setAttribute("font-size",40)
+        title.appendChild(document.createTextNode(playerList[player]))
+        document.getElementById("playerInfoSpace").appendChild(title)
+    }
+    
+    function buildDossierSkills(player)
+    {
+        var maxMax = Math.max.apply(Math, dossierMaxLists[player])
+        
+        for (var i=0; i<6; i++) // picks skill by index from skillList
+        {
+            for (var j=1; j<13; j++) // picks value from 1-12
+            {
+                if (j <= dossierMaxLists[player][i] - dossierBonLists[player][i])
+                {
+                    createDossierBox(i,j)
+                }
+            }
+            createDossierLabel(i)
+            createDossierBonus(i, player)
+        }
+    }
+    
+    function createDossierBox(skill, value)
+    {
+        var xCoord = 190 + 50 * value
+        var yCoord = 150 + 50 * skill
+        var box = document.createElementNS(svgNS,"rect");
+        box.setAttribute("id","box_" + skill + "_" + value)
+        box.setAttribute("x",xCoord+3)
+        box.setAttribute("y",yCoord+3)
+        box.setAttribute("width",44)
+        box.setAttribute("height",44)
+        box.setAttribute("fill",colorList[skill])
+        box.setAttribute("value",value)
+        box.setAttribute("skill",skill)
+        document.getElementById("playerInfoSpace").appendChild(box)
+    }
+    
+    function createDossierLabel(skill)
+    {
+        var xCoord = 0
+        var yCoord = 150 + 50 * skill
+        var label = document.createElementNS(svgNS,"text");
+        label.setAttribute("id","label_" + skill)
+        label.setAttribute("x",xCoord + 22)
+        label.setAttribute("y",yCoord + 29)
+        label.setAttribute("fill","black")
+        label.setAttribute("font-family","Ieicester")
+        label.setAttribute("font-size",20)
+        label.appendChild(document.createTextNode(skillList[skill]))
+        document.getElementById("playerInfoSpace").appendChild(label)
+    }
+    
+    function createDossierBonus(skill, player)
+    {
+        if (dossierBonLists[player][skill] != 0)
+        {
+            var bonus = document.createElementNS(svgNS,"text");
+        
+            xCoord = 190
+            yCoord = 150 + 50 * skill
+        
+            bonus.setAttribute("id","bonus_" + skill)
+            bonus.setAttribute("x",xCoord + 22)
+            bonus.setAttribute("y",yCoord + 29)
+            bonus.setAttribute("fill","black")
+            bonus.setAttribute("font-family","Ieicester")
+            bonus.setAttribute("font-size",20)
+            bonus.appendChild(document.createTextNode(dossierBonLists[player][skill] + "+"))
+    
+            document.getElementById("playerInfoSpace").appendChild(bonus)
+        }
+    }
+    
+    function playerClick(evt)
+    {
+        var target = evt.target
+        var player = target.getAttribute("player")
+        empty("playerInfoSpace")
+        buildPlayerInfo(player)
+    }
+</script>
+</head>
+<body onload="build();">
+<svg id="skillSpace" height="655" width="900" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg>
+<form name="chatInputForm" method="post" id="chatOutgoing" onsubmit="textSubmit()"></form><br>
+<form name="chatOutputForm" method="post" id="chatIncoming" onsubmit="filterSubmit()"></form><br>
+<form name="chatOutputForm2" method="post" id="chatIncoming2" onsubmit="filterSubmit()"></form><br>
+<svg id="playerLinkSpace" height="250" width="200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg>
+<svg id="playerInfoSpace" height="450" width="1000" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg>
+</body>
+</html>
