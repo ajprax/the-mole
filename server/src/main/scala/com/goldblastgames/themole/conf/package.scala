@@ -30,8 +30,8 @@ package object conf {
         Nation.withName((playerNode \ "@allegiance").text),
         skillNodes.map({ skillNode =>
           val name = (skillNode \ "@name").text
-          val min = Int.parse((skillNode \ "@min").text)
-          val max = Int.parse((skillNode \ "@max").text)
+          val min = (skillNode \ "@min").text.toInt
+          val max = (skillNode \ "@max").text.toInt
 
           (Skills.withName(name), (min, max))
         }).toMap
